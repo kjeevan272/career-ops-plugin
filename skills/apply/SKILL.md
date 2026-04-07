@@ -58,17 +58,29 @@ Generate answers for standard application fields:
 ## Step 3: Cover Letter (when needed)
 
 Structure:
-1. **Opening:** Specific hook about the company (NOT "I'm excited to apply")
-2. **Bridge:** How your specific background connects to their specific need
-3. **Evidence:** 2-3 concrete accomplishments from your experience relevant to this role
-4. **Close:** Forward-looking, confident but not presumptuous
+1. **Opening (1-2 sentences):** Specific hook referencing something real about the
+   company or role — NOT "I'm excited to apply" or "I was thrilled to see your posting."
+   Good: "Your team's migration from a Redshift monolith to a lakehouse architecture
+   is exactly the kind of challenge I've spent the last 3 years solving."
+2. **Bridge (1 sentence):** State your role identity and years of experience.
+   Use the exact job title from the JD.
+3. **Evidence (2–3 short bullets or sentences):** Concrete accomplishments, each with
+   a number. Pull from `proof_points` and `work_history.highlights`.
+   - At least 2 of the 3 must be quantified (%, records, cost, time saved)
+   - Name the specific tool/technology involved, matching JD keywords
+   - Good: "At [Company], I built PySpark pipelines on AWS EMR that reduced
+     daily processing time from 6 hours to 40 minutes for 2TB of clickstream data."
+4. **Close (2 sentences):** Forward-looking, confident, low-pressure.
+   Reference something specific about why THIS company, not just the role.
 
 Rules:
-- 250-350 words
-- Match JD language and keywords
-- Match company tone (formal for law firms, conversational for startups)
-- Reference specific details from research (if available)
+- 250-350 words total
+- Mirror exact JD keywords throughout — ATS systems score CLs too
+- Match company tone (formal for enterprise, conversational for startups)
+- Reference specific details from research file if available
 - Every claim must be backed by real experience from the profile
+- NO generic phrases: "team player", "passionate", "results-driven", "hard worker"
+- Subject line (for email): "{Role Title} – {Your Name} – {1 standout credential}"
 
 ## Step 4: Handle Custom Questions
 

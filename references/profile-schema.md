@@ -99,6 +99,13 @@ portfolio:
   - url: "https://yoursite.com/case-study"
     description: "Product case study: Acme onboarding redesign"
 
+# === Languages (required for German market / Lebenslauf) ===
+languages:
+  - language: "English"
+    level: "Fluent"            # Muttersprache | Fluent | Professional | Conversational | Basic | A1-C2 CEFR
+  - language: "German"
+    level: "Basic (A2)"
+
 # === Persona Modifiers ===
 persona:                           # Optional. Triggers special scoring adjustments.
   recent_graduate: false

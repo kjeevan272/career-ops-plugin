@@ -80,7 +80,7 @@ Returns JSON with `content[]`. Each has:
 **Example:** `https://api.smartrecruiters.com/v1/companies/BOSCH/postings`
 
 Note: Auth status is ambiguous in docs. Test before relying on this endpoint.
-If it returns 401, fall back to WebFetch on the careers page.
+If it returns 401, fall back to WebSearch.
 
 ## Workday (best-effort)
 
@@ -113,7 +113,7 @@ This endpoint is undocumented and may change. Treat as best-effort.
 | `jobs.ashbyhq.com/{slug}` | Ashby |
 | `{company}.ashbyhq.com` | Ashby |
 | `jobs.smartrecruiters.com/{slug}` | SmartRecruiters |
-| `{company}.recruitee.com` | Recruitee (no API, use WebFetch) |
+| `{company}.recruitee.com` | Recruitee (no API, use WebSearch) |
 | `apply.workable.com/{slug}` | Workable (widget API available) |
 | `*.myworkdayjobs.com` | Workday |
 

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="{{LANG}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lebenslauf – {{NAME}}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @page {
+      size: A4;
+      margin: 18mm 20mm 18mm 20mm;
+    }
+
+    body {
+      font-family: Arial, Calibri, "Segoe UI", Helvetica, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #1a1a1a;
+      max-width: 170mm;
+      margin: 0 auto;
+      padding: 18mm 20mm;
+    }
+
+    @media print {
+      body { padding: 0; max-width: none; }
+      .page-break { page-break-before: always; }
+      a { color: #1a1a1a; text-decoration: none; }
+    }
+
+    /* Document title */
+    .doc-title {
+      font-size: 20pt;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 14pt;
+      letter-spacing: 1.5pt;
+    }
+
+    /* Header block */
+    .header {
+      border-bottom: 1.5pt solid #2a2a2a;
+      padding-bottom: 10pt;
+      margin-bottom: 4pt;
+    }
+
+    .header h1 {
+      font-size: 15pt;
+      font-weight: 700;
+      margin-bottom: 6pt;
+    }
+
+    .personal-grid {
+      display: grid;
+      grid-template-columns: 140pt 1fr;
+      gap: 3pt 8pt;
+      font-size: 10pt;
+      color: #333;
+    }
+
+    .personal-grid .label {
+      font-weight: 600;
+    }
+
+    /* Section headers */
+    h2 {
+      font-size: 11pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8pt;
+      border-bottom: 0.75pt solid #bbb;
+      padding-bottom: 3pt;
+      margin-top: 13pt;
+      margin-bottom: 7pt;
+    }
+
+    /* Experience / Berufserfahrung */
+    .entry {
+      margin-bottom: 9pt;
+    }
+
+    .entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 1pt;
+    }
+
+    .entry-header .title {
+      font-weight: 700;
+      font-size: 10.5pt;
+    }
+
+    .entry-header .dates {
+      font-size: 10pt;
+      color: #555;
+      white-space: nowrap;
+    }
+
+    .entry .company {
+      font-size: 10pt;
+      color: #333;
+      margin-bottom: 4pt;
+    }
+
+    .entry .project-label {
+      font-size: 10pt;
+      font-weight: 600;
+      color: #444;
+      margin-top: 4pt;
+      margin-bottom: 2pt;
+    }
+
+    .entry ul {
+      padding-left: 16pt;
+      margin: 0;
+    }
+
+    .entry li {
+      font-size: 10.5pt;
+      margin-bottom: 2pt;
+      line-height: 1.4;
+    }
+
+    /* Summary / Profil */
+    .summary {
+      font-size: 10.5pt;
+      line-height: 1.5;
+    }
+
+    /* Skills / Kenntnisse */
+    .skill-category {
+      margin-bottom: 4pt;
+      font-size: 10.5pt;
+    }
+
+    .skill-category-name {
+      font-weight: 600;
+    }
+
+    /* Education / Ausbildung */
+    .edu-entry {
+      margin-bottom: 5pt;
+      font-size: 10.5pt;
+    }
+
+    .edu-entry .degree {
+      font-weight: 600;
+    }
+
+    .edu-entry .school {
+      color: #333;
+    }
+
+    /* Languages / Sprachen */
+    .lang-entry {
+      font-size: 10.5pt;
+      margin-bottom: 2pt;
+    }
+
+    .lang-entry .lang-name {
+      font-weight: 600;
+    }
+
+    /* Signature block */
+    .signature-block {
+      margin-top: 24pt;
+      font-size: 10pt;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="doc-title">Lebenslauf</div>
+
+  <!-- Personal details / Persönliche Daten -->
+  <div class="header">
+    <h1>{{NAME}}</h1>
+    <div class="personal-grid">
+      <span class="label">Adresse / Address</span>    <span>{{LOCATION}}</span>
+      <span class="label">Telefon</span>               <span>{{PHONE}}</span>
+      <span class="label">E-Mail</span>                <span>{{EMAIL}}</span>
+      {{LINKEDIN_ROW}}
+      {{PORTFOLIO_ROW}}
+      <span class="label">Arbeitsgenehmigung</span>   <span>{{WORK_AUTH}}</span>
+    </div>
+  </div>
+
+  <!-- Profil / Professional Profile -->
+  <h2>{{SECTION_PROFILE}}</h2>
+  <div class="summary">{{SUMMARY}}</div>
+
+  <!-- Berufserfahrung / Professional Experience -->
+  <h2>{{SECTION_EXPERIENCE}}</h2>
+  {{EXPERIENCE}}
+  <!--
+  Each experience entry:
+  <div class="entry">
+    <div class="entry-header">
+      <span class="title">Job Title</span>
+      <span class="dates">Jul 2017 – Present</span>
+    </div>
+    <div class="company">Company Name | Location</div>
+    <ul>
+      <li>Achievement or responsibility with quantified result</li>
+    </ul>
+  </div>
+  -->
+
+  <!-- Ausbildung / Education -->
+  <h2>{{SECTION_EDUCATION}}</h2>
+  {{EDUCATION}}
+  <!--
+  <div class="edu-entry">
+    <span class="degree">B.Tech Computer Science</span>
+    <span class="school"> | JNTUA, 2017</span>
+  </div>
+  -->
+
+  <!-- Kenntnisse / Technical Skills -->
+  <h2>{{SECTION_SKILLS}}</h2>
+  {{SKILLS}}
+  <!--
+  <div class="skill-category">
+    <span class="skill-category-name">Cloud & Data Platforms: </span>
+    AWS Glue, Amazon Redshift, AWS S3, AWS EMR, Databricks
+  </div>
+  -->
+
+  <!-- Sprachen / Languages -->
+  <h2>{{SECTION_LANGUAGES}}</h2>
+  {{LANGUAGES}}
+  <!--
+  <div class="lang-entry">
+    <span class="lang-name">English</span> — Fluent (Professional)
+  </div>
+  <div class="lang-entry">
+    <span class="lang-name">German</span> — Basic (A2)
+  </div>
+  -->
+
+  <!-- Signature / Unterschrift -->
+  <div class="signature-block">
+    {{SIGNATURE_CITY}}, {{SIGNATURE_DATE}}<br><br><br>
+    ___________________________<br>
+    {{NAME}}
+  </div>
+
+</body>
+</html>

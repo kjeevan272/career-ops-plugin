@@ -44,14 +44,52 @@ For each job entry:
 - Links: include LinkedIn URL as plain text, not hyperlink-only element.
 - Include both acronym and full form: "Search Engine Optimization (SEO)"
 
+## Contact Line
+
+- Single line directly under the name:
+  `City, Country | +XX XXXXXXXXXX | email@domain.com | linkedin.com/in/handle`
+- No separate address block. No labels ("Email:", "Phone:") — the format is self-evident.
+
+## Area of Expertise / Keyword Grid
+
+- Include a dedicated "Area of Expertise" (or "Core Competencies") section
+  placed AFTER the summary and BEFORE experience.
+- List 9–12 role-specific competency keywords in a 3-column grid (simple HTML table,
+  no nesting, no styling that breaks ATS).
+- Use exact phrases from the JD — this is the single highest-density keyword
+  injection point in the entire resume.
+- Examples for Data Engineering: ETL Pipelines, Data Modeling, Data Governance,
+  Stream Processing, Cloud Data Platforms, Data Warehousing, Performance Optimization,
+  Data Quality, Pipeline Orchestration, Lakehouse Architecture.
+
+## Bullet Formula
+
+Every experience bullet MUST follow this pattern:
+  **[Strong verb] + [what/how, naming the tool] + [quantified result]**
+- Strong verb examples: Built, Designed, Optimized, Implemented, Migrated,
+  Reduced, Increased, Automated, Architected, Delivered
+- Tool named inline: "...using Apache Spark on EMR..." not just "using distributed tools"
+- Quantified result: %, TB processed, ms latency, records/day, cost saved, time reduced
+- NO bullet without a number. If the real number isn't known, use a meaningful
+  relative metric: "reducing job runtime by ~40%" or "processing 500M+ records daily"
+
+## Projects Section
+
+- Include a "Projects" section (after Experience, before Education) when the profile
+  has notable personal/open-source/freelance projects.
+- Format: Project name | technologies used | 1-line impact statement.
+- Each project must name specific tools/stack — this adds keyword coverage for
+  technologies not represented in work history.
+
 ## Keyword Strategy
 
 - Mirror exact phrases from the JD. If the JD says "project management,"
   your resume says "project management," not "programme management" or "PM."
 - Place the most important keywords in the first third of the resume
-  (Summary and first role).
+  (Summary, Area of Expertise, and first role).
 - Skills section lists JD keywords first, then additional skills.
-- Each bullet should contain at least one relevant keyword where natural.
+- Each bullet must contain at least one tool name or JD keyword — not just
+  generic verbs.
 
 ## File Output
 
@@ -60,3 +98,26 @@ For each job entry:
 - Include `@media print` CSS for clean print output
 - `@page` rules for correct paper size (Letter for US, A4 for international)
 - No JavaScript in the HTML (breaks some ATS parsers)
+
+## German Market (Lebenslauf) Rules
+
+Use `references/resume-template-de.html` when: job is in Germany/Austria/Switzerland, or
+profile.location is Germany, or JD is in German. Apply these additional rules:
+
+- **Document title:** "Lebenslauf" centered at the top (standard in DE/AT/CH market)
+- **Personal details block:** Name, Address, Phone, Email, Work Authorization —
+  include Arbeitsgenehmigung line (critical for non-EU applicants)
+- **Languages section (Sprachen):** Always required. Rate each language:
+  Muttersprache | Fließend | Verhandlungssicher | Grundkenntnisse (A1–C2 CEFR)
+- **Signature block:** City, date, horizontal line, typed name — required by DE convention
+- **Paper size:** A4 always
+- **Section header language:** Match JD language (German JD → German headers;
+  English JD at a German company → English headers are fine)
+  - German: Profil, Berufserfahrung, Ausbildung, Kenntnisse, Sprachen
+  - English: Profile, Experience, Education, Skills, Languages
+- **Photo:** DO NOT embed photos in ATS submissions. Note in comments only.
+  Many German ATS systems (SAP SuccessFactors, Personio, Greenhouse) discard photos.
+- **Work authorization line:** Always state clearly (e.g., "Work Authorization –
+  Germany; requires employment contract; no visa sponsorship needed")
+- **Date format:** MM/YYYY or "Jan 2020" — never DD/MM/YYYY in resume context
+- **Avoid:** Fancy graphics, colored sidebars, text boxes — German ATS is strict

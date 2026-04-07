@@ -1,7 +1,7 @@
 ---
 name: tailor-resume
-description: "Generate an ATS-optimized resume tailored to a specific job posting. Creates clean HTML you can print to PDF. Works for any industry. Use when someone says 'tailor my resume', 'make me a resume', 'create a resume for', or 'update my resume for'."
-argument-hint: "<company name or 'for the latest evaluation'>"
+description: "Generate an ATS-optimized resume tailored to a specific job posting. Auto-detects German market and generates Lebenslauf format. Works directly from a JD paste — no prior evaluation needed. Use when someone says 'tailor my resume', 'make me a resume', 'create a resume for', 'update my resume for', or after evaluating a job."
+argument-hint: "<company name, 'for the latest evaluation', or paste JD directly>"
 user-invocable: true
 allowed-tools:
   - Read
@@ -9,134 +9,225 @@ allowed-tools:
   - Glob
 ---
 
-# Tailor Your Resume
+# Tailor Resume
 
-Generate an ATS-optimized resume customized for a specific job posting.
-Read references/ats-rules.md before generating any HTML.
+Generate an ATS-optimized, market-appropriate resume for a specific job posting.
+Read `references/ats-rules.md` before generating any HTML — including the German
+market section at the bottom.
 
-## Step 0: Load Context
+---
 
-1. Read `data/profile.yml` for structured background data
-2. Read `data/resume.md` if it exists (full resume text for detail)
-3. Find the target evaluation:
-   - If the user specified a company/role, search `data/evaluations/` for a match
-   - If "latest" or no argument, use the most recent evaluation file
-   - If ambiguous, list recent evaluations and ask which one
-4. If no evaluation exists:
-   > "I need to evaluate the job first so I know what to emphasize.
-   > Paste the job posting and I'll assess it, then generate your resume."
+## Step 0: Load Profile
 
-## Step 1: Keyword Extraction
+Read `data/profile.yml` and `data/resume.md` (if it exists).
+If profile doesn't exist, run setup first.
 
-From the evaluation + JD, extract 15-20 keywords that ATS systems scan for:
+---
 
-- Exact phrases from "Required Qualifications" (highest priority)
-- Industry-standard terms (not creative synonyms)
-- Certifications, tools, methodologies named in the JD
-- Action verbs that match the responsibilities section
+## Step 1: Get the Job Posting
 
-## Step 2: Detect Language & Locale
+Sources (in priority order):
 
-- JD in English + US company: Letter paper (8.5" x 11")
-- JD in English + non-US: A4
-- JD in another language: match that language, use A4
-- Resume language MUST match JD language
+1. **Prior evaluation exists:** User named a company/role → search `data/evaluations/`
+   for a matching file. "latest" or no argument → use the most recent file.
+2. **JD pasted in this message:** Use it directly. Extract all fields below.
+3. **No evaluation, no JD:** Ask the user to paste the JD.
 
-## Step 3: Build Resume Content
+Extract from the JD:
+- Job title, company name, location / remote policy
+- Required qualifications (hard requirements)
+- Preferred qualifications (nice-to-haves)
+- Key responsibilities and action verbs
+- Stated compensation (if any)
+- Seniority signals
+- JD language (English / German / other)
 
-Using the evaluation's Block E (Tailoring Plan) as a guide, construct
-each resume section from profile data:
+---
 
-### Professional Summary (3-4 lines)
-- Open with years of experience + core identity
-- Include 3-5 top keywords from the JD naturally
+## Step 2: Detect Market & Format
+
+**German market** → use `references/resume-template-de.html` when ANY of:
+- Job location includes Germany, Austria, or Switzerland
+- Profile location is Germany / DE
+- JD is written in German
+
+**All other markets** → use `references/resume-template.html`
+- US company → Letter (8.5" × 11")
+- Non-US, non-DE → A4
+
+Resume language MUST match the JD language.
+
+---
+
+## Step 3: Extract ATS Keywords
+
+From the JD, extract 15–20 keywords that ATS systems scan for:
+
+- Exact phrases from Required Qualifications (highest priority)
+- Tool names and technologies named in the JD
+- Certifications or methodologies listed
+- Action verbs from the responsibilities section
+- Industry-standard terms — never creative synonyms
+
+Place the top 8 keywords in the Summary and first experience entry.
+
+---
+
+## Step 4: Build Resume Content
+
+### Professional Summary / Profil (3–4 lines)
+- First line: "[X]+ years of experience as [exact job title from JD]"
+- Weave in 4–5 top JD keywords naturally across the 3–4 lines
 - End with a forward-looking statement connecting to this specific role
-- Use the narrative.headline from profile as a starting point
+- Use `narrative.headline` from profile as a starting point
+- For German market: write in the JD language (EN or DE)
 
-### Experience Section
-- Include all roles from work_history, most relevant FIRST
-- For each role: Company, Title, Dates on one line
-- 3-5 bullets per role, ordered by relevance to THIS JD
-- Each bullet: Action verb + what you did + quantified result
-- Mirror JD language exactly (if JD says "project management",
-  write "project management", not "programme management")
-- Pull specific numbers from proof_points and work_history highlights
+### Area of Expertise / Core Competencies
+Place this section AFTER summary, BEFORE experience. It is the single highest-density
+keyword section — critical for ATS score.
+- Pick 9–12 competency phrases directly from the JD's Required and Preferred sections
+- Lay them out in a 3-column grid (simple `<table>` with no borders, no styling)
+- Use exact JD phrasing — not paraphrases
+- Example grid for a Data Engineering role:
+  | ETL Pipeline Development | Data Modeling & Governance | Cloud Data Platforms |
+  | Stream Processing (Kafka) | Data Warehouse Architecture | Performance Optimization |
+  | Pipeline Orchestration | Lakehouse Design | Data Quality & Observability |
 
-### Education Section
+### Experience / Berufserfahrung
+- All roles from `work_history`, most relevant FIRST
+- Each role: Title, Company, Dates (right-aligned), Location
+- 4–6 bullets per role, ordered by relevance to THIS JD
+- **Bullet formula (mandatory):** Strong verb → tool/tech named → quantified result
+  - Good: "Architected PySpark pipelines on AWS EMR processing 2TB daily, reducing
+    job latency by 45% and cutting compute costs by $30K/year"
+  - Bad: "Worked on data pipelines to improve performance"
+- Every bullet must contain a number. If exact metric unknown, use a meaningful
+  approximation ("~40% reduction", "500M+ records/day")
+- Mirror JD language exactly (if JD says "data pipeline," use "data pipeline")
+- Pull numbers from `proof_points` and `work_history.highlights`
+- For roles with many client projects (like consulting): group highlights by
+  the 3–4 most relevant clients/projects for this specific JD
+
+### Projects / Projekte (if profile has project entries)
+- Include after Experience, before Education
+- Format per project: **Project Name** | Tech stack | 1-line impact
+- Name specific tools — adds keyword coverage for tech not in work history
+
+### Education / Ausbildung
 - Degree, School, Year
-- Include relevant coursework or honors only if recent grad
+- Add honors or relevant coursework only for recent grads
 
-### Skills Section
-- List JD keywords FIRST, then additional skills
-- Group by category if 10+ skills (Technical, Tools, Methodologies, etc.)
-- Include both acronym and full form: "Search Engine Optimization (SEO)"
+### Skills / Kenntnisse
+- Group into categories. For data engineering roles use:
+  - **Cloud & Data Platforms:** (AWS Glue, Redshift, S3, EMR, Databricks, Snowflake…)
+  - **Processing & Orchestration:** (PySpark, Kafka, Spark, Flink, Airflow…)
+  - **Storage & Formats:** (Delta Lake, Iceberg, Parquet, dbt…)
+  - **Analytics & BI:** (SQL, Tableau, Power BI, Athena…)
+  - **DevOps & Security:** (IAM, KMS, CloudWatch, Linux…)
+- List JD keywords FIRST within each category
+- Include acronym + full form where needed: "CDC (Change Data Capture)"
 
-### Certifications Section (if applicable)
-- From credentials in profile
-- Include status, jurisdiction, number if relevant
+### Languages / Sprachen (German market only)
+- Always include this section for German market applications
+- Pull from profile if available; otherwise use sensible defaults:
+  - English: Fluent / Professional (if resume was written in English)
+  - German: state level honestly; if unknown, write "Basic (A1–A2)" unless profile says otherwise
+  - Any other languages from profile
 
-### Projects / Portfolio (if applicable and relevant)
-- Only include if the archetype values it (Creative, Technology)
-- Brief description + link + key metric
+### Work Authorization line (German market only)
+Use the `visa_status` field from profile. Format:
+> "Work Authorization – Germany; employment contract required; no visa sponsorship needed"
 
-## Step 4: Generate HTML
-
-Read the template from references/resume-template.html.
-
-Fill all `{{PLACEHOLDER}}` slots with the generated content.
-
-ATS compliance rules (from references/ats-rules.md):
-- Single column ONLY
-- Standard section headers exactly: "Experience", "Education", "Skills"
-- No images, icons, or graphics
-- All text selectable (no text-in-images)
-- Standard fonts: Arial, Calibri, Georgia, or system sans-serif
-- Font size: 10-12pt body, 14-16pt name
-- Margins: 0.5-1 inch
-- No headers/footers (ATS strips them)
-- Max 2 pages
-
-## Step 5: Output
-
-Write the HTML to `data/resumes/{company-slug}-{role-slug}.html`.
-
-Show the user a preview of the content (not the HTML code):
-
-```
-## Resume Preview: {Name} - {Target Role} at {Company}
-
-**Summary:** {first 2 lines}
-
-**Experience:**
-- {Role 1} at {Company} ({dates}) - {first bullet}
-- {Role 2} at {Company} ({dates}) - {first bullet}
-
-**Skills:** {top 10}
-
-**Keywords matched:** {n}/20 from the JD
-```
-
-## Step 6: PDF Instructions
-
-> "Your tailored resume is saved at `data/resumes/{filename}.html`.
+### Signature block (German market only)
+> {City from profile.location}, {today's date in DD. Month YYYY format}
 >
-> **To save as PDF:**
+> ___________________________
+> {Name}
+
+---
+
+## Step 5: Generate HTML
+
+Open the correct template file.
+Replace ALL `{{PLACEHOLDER}}` slots with generated content.
+
+For German template, set:
+- `{{LANG}}` → `de` if JD is German, `en` if English
+- `{{SECTION_PROFILE}}` → "Profil" (DE) or "Professional Profile" (EN)
+- `{{SECTION_EXPERIENCE}}` → "Berufserfahrung" (DE) or "Experience" (EN)
+- `{{SECTION_EDUCATION}}` → "Ausbildung" (DE) or "Education" (EN)
+- `{{SECTION_SKILLS}}` → "Kenntnisse" (DE) or "Skills" (EN)
+- `{{SECTION_LANGUAGES}}` → "Sprachen" (DE) or "Languages" (EN)
+- `{{LINKEDIN_ROW}}` → full `<span class="label">LinkedIn</span><span>URL</span>` row,
+  or empty string if no LinkedIn in profile
+- `{{PORTFOLIO_ROW}}` → same pattern for GitHub/portfolio, or empty string
+- `{{WORK_AUTH}}` → work authorization string from profile
+- `{{SIGNATURE_CITY}}` → city from profile.location
+- `{{SIGNATURE_DATE}}` → today's date formatted as "20. Mai 2026" (DE) or "20 May 2026" (EN)
+
+ATS compliance checklist before writing the file:
+- [ ] Single column, no sidebars
+- [ ] No images or graphics
+- [ ] All text is real text (selectable)
+- [ ] Standard fonts only
+- [ ] No JavaScript
+- [ ] Max 2 pages when printed
+- [ ] Standard section header names
+
+---
+
+## Step 6: Write & Preview
+
+Write the HTML to `data/resumes/{FirstName}-{LastName}-{CompanySlug}-{RoleSlug}.html`.
+
+Show the user a content preview (not raw HTML):
+
+```
+## Resume Ready: {Name} → {Role} at {Company}
+**Format:** {German Lebenslauf / US Letter / A4}
+
+**Profile summary (first 2 lines):** {text}
+
+**Experience highlights:**
+- {Title} at {Company} ({dates})
+  → {first bullet}
+- {same for next role if any}
+
+**Skills (top 10):** {comma-separated}
+**Languages:** {if German format}
+
+**ATS keywords matched:** {n}/{total} from JD
+```
+
+---
+
+## Step 7: PDF Instructions
+
+> "Your tailored resume is ready at `data/resumes/{filename}.html`
+>
+> **To export as PDF:**
 > 1. Open the file in your browser (double-click it)
-> 2. Press **Cmd+P** (Mac) or **Ctrl+P** (Windows)
-> 3. Select **Save as PDF**
-> 4. Done!
+> 2. Press **Ctrl+P** (Windows) or **Cmd+P** (Mac)
+> 3. Choose **Save as PDF** — set paper to **A4**
+> 4. Disable headers/footers in print settings
+> 5. Save it as `{Name}-{Company}-{Role}.pdf`
 >
-> The HTML is designed to print cleanly. What you see is what you get."
+> That PDF is ATS-safe and ready to attach to your application."
 
-## Step 7: Update Tracker
+---
 
-Update the matching row in `data/applications.md`:
-- Status: "Resume Ready" (if currently "Evaluated")
-- Notes: append "Resume: {filename}"
+## Step 8: Update Tracker
 
-## Step 8: Next Steps
+Update `data/applications.md`:
+- If a matching row exists (same company + role): set Status → "Resume Ready",
+  append `Resume: {filename}` to Notes
+- If no row exists: add a new row with today's date, company, role, Status = "Resume Ready"
 
-> "Resume is ready! Next steps:
-> - **Review it** by opening the HTML file
-> - **Apply** by saying 'help me with the {company} application'
-> - **Compare** this role with others: 'compare my options'"
+---
+
+## Step 9: Next Steps
+
+> "Resume is ready. Next steps:
+> - **Apply** — open the HTML, print to PDF (Ctrl+P → Save as PDF), attach to application
+> - **Cover letter** — say 'write a cover letter for {company}' and I'll draft one
+> - **Compare options** — say 'compare my options' to rank all evaluated roles"
