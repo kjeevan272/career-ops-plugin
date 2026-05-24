@@ -1,23 +1,49 @@
 """
 Generate data/pipeline-dashboard.html from data/pipeline.md
+Defaults to showing only the latest scrape run, jobs posted within 24 hrs.
 Run: python scripts/generate_dashboard.py
 """
 
+import json
 import re
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
-ROOT          = Path(__file__).parent.parent
-PIPELINE_PATH = ROOT / "data" / "pipeline.md"
-OUTPUT_PATH   = ROOT / "data" / "pipeline-dashboard.html"
+ROOT           = Path(__file__).parent.parent
+PIPELINE_PATH  = ROOT / "data" / "pipeline.md"
+LAST_RUN_PATH  = ROOT / "data" / ".last-run.json"
+OUTPUT_PATH    = ROOT / "data" / "pipeline-dashboard.html"
+
 
 def parse_url(cell):
     m = re.search(r'\(https?://[^\)]+\)', cell)
     return m.group(0).strip("()") if m else ""
 
+
 def parse_score(cell):
     m = re.search(r'(\d+)', cell)
     return int(m.group(1)) if m else 0
+
+
+def load_last_run():
+    if not LAST_RUN_PATH.exists():
+        return None
+    try:
+        return json.loads(LAST_RUN_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def is_posted_recent(posted_str: str, cutoff: date) -> bool:
+    """True if posted date is within cutoff, or unparseable (scraper already used hours_old=24)."""
+    if not posted_str or posted_str.strip() in ("—", "nan", "NaT", "None", ""):
+        return True
+    try:
+        return date.fromisoformat(posted_str.strip()[:10]) >= cutoff
+    except (ValueError, TypeError):
+        return True
+
 
 def parse_pipeline():
     if not PIPELINE_PATH.exists():
@@ -30,10 +56,7 @@ def parse_pipeline():
             continue
         cols = [c.strip() for c in line.strip("|").split("|")]
 
-        # detect format by column count
-        # old (8 cols): date_found | company | role | score | location | remote | url | status
-        # new (10 cols): date_found | posted | company | role | score | location | remote | source | url | status
-        if len(cols) >= 10:
+        if len(cols) >= 10:   # new 10-column format
             date_found = cols[0]
             posted     = cols[1]
             company    = cols[2]
@@ -44,7 +67,7 @@ def parse_pipeline():
             source     = cols[7].lower()
             url        = parse_url(cols[8])
             status     = cols[9]
-        elif len(cols) >= 8:
+        elif len(cols) >= 8:  # old 8-column format
             date_found = cols[0]
             posted     = "—"
             company    = cols[1]
@@ -60,8 +83,6 @@ def parse_pipeline():
 
         if not role or not company or not url:
             continue
-
-        # skip header-like rows
         if company.lower() in ("company", "---"):
             continue
 
@@ -80,13 +101,17 @@ def parse_pipeline():
 
     return jobs
 
+
 def escape(s):
     return s.replace("\\", "\\\\").replace("`", "\\`").replace("'", "\\'").replace('"', '\\"')
+
 
 def js_array(jobs):
     rows = []
     for i, j in enumerate(jobs, 1):
-        src = "linkedin" if "linkedin" in j["source"] else ("indeed" if "indeed" in j["source"] else j["source"])
+        src = ("linkedin" if "linkedin" in j["source"]
+               else "indeed" if "indeed" in j["source"]
+               else j["source"])
         rows.append(
             "  {" +
             f"n:{i}," +
@@ -98,16 +123,22 @@ def js_array(jobs):
             f'source:"{src}",' +
             f'posted:"{escape(j["posted"])}",' +
             f'dateFound:"{escape(j["date_found"])}",' +
-            f'url:"{escape(j["url"])}"' +
+            f'url:"{escape(j["url"])}",' +
+            f'isNew:{"true" if j.get("is_new") else "false"}' +
             "}"
         )
     return "[\n" + ",\n".join(rows) + "\n]"
 
-def generate_html(jobs):
-    total   = len(jobs)
-    remote  = sum(1 for j in jobs if j["remote"])
-    high    = sum(1 for j in jobs if j["score"] >= 7)
-    scraped = jobs[0]["date_found"] if jobs else "—"
+
+def generate_html(jobs, run_info):
+    total        = len(jobs)
+    new_jobs     = [j for j in jobs if j.get("is_new")]
+    remote_count = sum(1 for j in new_jobs if j["remote"])
+    high_count   = sum(1 for j in new_jobs if j["score"] >= 7)
+
+    run_date  = run_info["date"] if run_info else "—"
+    run_count = run_info["count"] if run_info else 0
+    run_ts    = run_info.get("timestamp", "")[:16].replace("T", " ") if run_info else "—"
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -124,6 +155,13 @@ def generate_html(jobs):
     .stats{{display:flex;gap:20px}}
     .stat .n{{font-size:26px;font-weight:700;color:#7eb8f7}}
     .stat .l{{font-size:11px;color:#99a;text-transform:uppercase}}
+    .run-bar{{background:#0f3460;border-bottom:1px solid #1a2a5a;padding:8px 28px;font-size:12px;color:#7eb8f7;display:flex;align-items:center;gap:16px;flex-wrap:wrap}}
+    .run-bar strong{{color:#fff}}
+    .view-toggle{{margin-left:auto;display:flex;gap:0}}
+    .view-btn{{padding:5px 14px;border:1px solid #4a6fa5;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:#7eb8f7;transition:all .15s}}
+    .view-btn:first-child{{border-radius:6px 0 0 6px}}
+    .view-btn:last-child{{border-radius:0 6px 6px 0;border-left:none}}
+    .view-btn.active{{background:#1a73e8;border-color:#1a73e8;color:#fff}}
     .controls{{background:#fff;border-bottom:1px solid #e0e0e0;padding:12px 28px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}}
     .controls input,.controls select{{border:1px solid #ccc;border-radius:6px;padding:6px 10px;font-size:13px;outline:none}}
     .controls input{{width:220px}}
@@ -163,15 +201,24 @@ def generate_html(jobs):
 <header>
   <div>
     <h1>Job Pipeline — Jeevan Kumar Kondasingu</h1>
-    <p>Senior Data Engineer · Munich, Germany · Last scraped {scraped}</p>
+    <p>Senior Data Engineer · Germany · career-ops-plugin</p>
   </div>
   <div class="stats">
-    <div class="stat"><div class="n">{total}</div><div class="l">Total</div></div>
+    <div class="stat"><div class="n" id="stat-shown">{run_count}</div><div class="l">Showing</div></div>
     <div class="stat"><div class="n" id="applied-stat">0</div><div class="l">Applied</div></div>
-    <div class="stat"><div class="n">{remote}</div><div class="l">Remote</div></div>
-    <div class="stat"><div class="n">{high}</div><div class="l">Score 7+</div></div>
+    <div class="stat"><div class="n">{remote_count}</div><div class="l">Remote</div></div>
+    <div class="stat"><div class="n">{high_count}</div><div class="l">Score 7+</div></div>
   </div>
 </header>
+<div class="run-bar">
+  <span>Last run: <strong>{run_ts}</strong></span>
+  <span>New jobs: <strong>{run_count}</strong> posted in last 24 hrs</span>
+  <span>Total in pipeline: <strong>{total}</strong></span>
+  <div class="view-toggle">
+    <button class="view-btn active" id="btn-new" onclick="setView('new')">Latest run</button>
+    <button class="view-btn" id="btn-all" onclick="setView('all')">All time</button>
+  </div>
+</div>
 <div class="controls">
   <input type="text" id="search" placeholder="Search role, company, location...">
   <select id="filter-score">
@@ -195,7 +242,7 @@ def generate_html(jobs):
     <option value="new">Not applied</option>
     <option value="applied">Applied only</option>
   </select>
-  <span class="count-badge" id="visible-count">{total} jobs</span>
+  <span class="count-badge" id="visible-count">— jobs</span>
 </div>
 <div class="table-wrap">
   <table id="jobs-table">
@@ -224,12 +271,12 @@ function loadApplied() {{
   try {{ return new Set(JSON.parse(localStorage.getItem(APPLIED_KEY) || "[]")); }}
   catch {{ return new Set(); }}
 }}
-
 function saveApplied(set) {{
   localStorage.setItem(APPLIED_KEY, JSON.stringify([...set]));
 }}
 
 let appliedSet = loadApplied();
+let currentView = "new";  // "new" = latest run only | "all" = everything
 
 function toggleApplied(url) {{
   if (appliedSet.has(url)) appliedSet.delete(url);
@@ -247,23 +294,31 @@ function scoreClass(s) {{
   return s>=9?"s9":s>=8?"s8":s>=7?"s7":s>=6?"s6":s>=5?"s5":"s4";
 }}
 
-const jobs = {js_array(jobs)};
+const ALL_JOBS = {js_array(jobs)};
+
+function setView(v) {{
+  currentView = v;
+  document.getElementById("btn-new").classList.toggle("active", v==="new");
+  document.getElementById("btn-all").classList.toggle("active", v==="all");
+  applyFilters();
+}}
 
 function render(data) {{
   const tbody = document.getElementById("tbody");
+  document.getElementById("stat-shown").textContent = data.length;
   if (!data.length) {{
-    tbody.innerHTML="";
-    document.getElementById("no-results").style.display="block";
-    document.getElementById("jobs-table").style.display="none";
+    tbody.innerHTML = "";
+    document.getElementById("no-results").style.display = "block";
+    document.getElementById("jobs-table").style.display = "none";
   }} else {{
-    document.getElementById("no-results").style.display="none";
-    document.getElementById("jobs-table").style.display="table";
+    document.getElementById("no-results").style.display = "none";
+    document.getElementById("jobs-table").style.display = "table";
     const srcClass = s => s==="linkedin"?"bli":s==="indeed"?"bin":"bo";
-    tbody.innerHTML = data.map(j => {{
+    tbody.innerHTML = data.map((j, idx) => {{
       const isApplied = appliedSet.has(j.url);
       const src = j.source==="linkedin"?"LinkedIn":j.source==="indeed"?"Indeed":j.source;
       return `<tr class="${{isApplied?"applied":""}}">
-        <td style="color:#999;font-size:11px">${{j.n}}</td>
+        <td style="color:#999;font-size:11px">${{idx+1}}</td>
         <td><span class="score ${{scoreClass(j.score)}}">${{j.score}}/10</span></td>
         <td class="company">${{j.company}}</td>
         <td class="role">${{j.role}}</td>
@@ -273,7 +328,7 @@ function render(data) {{
         <td><span class="badge ${{srcClass(j.source)}}">${{src}}</span></td>
         <td>
           <a class="btn-apply ${{j.source}}" href="${{j.url}}" target="_blank" rel="noopener">Apply</a>
-          <button class="btn-done ${{isApplied?"applied":""}}" onclick="toggleApplied('${{j.url}}')">${{isApplied?"Applied":"Mark Applied"}}</button>
+          <button class="btn-done ${{isApplied?"applied":""}}" onclick="toggleApplied('${{j.url}}')">${{isApplied?"Applied ✓":"Mark Applied"}}</button>
         </td>
       </tr>`;
     }}).join("");
@@ -283,20 +338,22 @@ function render(data) {{
 
 function applyFilters() {{
   const q        = document.getElementById("search").value.toLowerCase();
-  const minScore = parseInt(document.getElementById("filter-score").value)||0;
+  const minScore = parseInt(document.getElementById("filter-score").value) || 0;
   const remFilt  = document.getElementById("filter-remote").value;
   const srcFilt  = document.getElementById("filter-source").value;
   const appFilt  = document.getElementById("filter-applied").value;
 
-  render(jobs.filter(j => {{
-    const text = (j.company+" "+j.role+" "+j.location).toLowerCase();
+  let pool = currentView === "new" ? ALL_JOBS.filter(j => j.isNew) : ALL_JOBS;
+
+  render(pool.filter(j => {{
+    const text = (j.company + " " + j.role + " " + j.location).toLowerCase();
     if (q && !text.includes(q)) return false;
     if (j.score < minScore) return false;
-    if (remFilt==="remote" && !j.remote) return false;
-    if (remFilt==="onsite" && j.remote) return false;
-    if (srcFilt!=="all" && j.source!==srcFilt) return false;
-    if (appFilt==="new" && appliedSet.has(j.url)) return false;
-    if (appFilt==="applied" && !appliedSet.has(j.url)) return false;
+    if (remFilt === "remote" && !j.remote) return false;
+    if (remFilt === "onsite" && j.remote) return false;
+    if (srcFilt !== "all" && j.source !== srcFilt) return false;
+    if (appFilt === "new" && appliedSet.has(j.url)) return false;
+    if (appFilt === "applied" && !appliedSet.has(j.url)) return false;
     return true;
   }}));
 }}
@@ -304,19 +361,40 @@ function applyFilters() {{
 updateAppliedStat();
 ["search","filter-score","filter-remote","filter-source","filter-applied"]
   .forEach(id => document.getElementById(id).addEventListener("input", applyFilters));
-render(jobs);
+applyFilters();
 </script>
 </body>
 </html>"""
+
 
 def main():
     print("Parsing pipeline.md...")
     jobs = parse_pipeline()
     print(f"Found {len(jobs)} jobs total")
 
-    html = generate_html(jobs)
+    run_info = load_last_run()
+    cutoff   = date.today() - timedelta(days=1)
+
+    if run_info:
+        last_run_urls = set(run_info.get("urls", []))
+        print(f"Last run: {run_info['date']} · {run_info['count']} new jobs")
+        for j in jobs:
+            j["is_new"] = (j["url"] in last_run_urls
+                           and is_posted_recent(j["posted"], cutoff))
+    else:
+        print("No run state found — marking today's jobs as new")
+        today = date.today().isoformat()
+        for j in jobs:
+            j["is_new"] = (j["date_found"] == today
+                           and is_posted_recent(j["posted"], cutoff))
+
+    new_count = sum(1 for j in jobs if j["is_new"])
+    print(f"New jobs for dashboard default view: {new_count}")
+
+    html = generate_html(jobs, run_info)
     OUTPUT_PATH.write_text(html, encoding="utf-8")
     print(f"Dashboard written to {OUTPUT_PATH}")
+
 
 if __name__ == "__main__":
     main()
