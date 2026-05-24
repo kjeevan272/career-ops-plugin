@@ -8,7 +8,8 @@
       "PowerShell(python C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\scripts\\\\_test_ashby.py 2>&1)",
       "PowerShell(python -c \"import requests; r = requests.get\\('https://apply.workable.com/api/v3/accounts/huggingface/jobs', headers={'Accept': 'application/json'}, timeout=10\\); print\\(r.status_code, r.text[:200]\\)\" 2>&1)",
       "PowerShell(python C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\scripts\\\\_test_stepstone.py 2>&1)",
-      "Bash(start *)"
+      "Bash(start *)",
+      "Bash(git add *)"
     ]
   }
 }

@@ -87,18 +87,28 @@ EXCLUDE_KEYWORDS = [
     "student", "apprentice", "graduate program", "entry level"
 ]
 
+_TITLE_MUST_HAVE = {
+    "data", "analytics", "analytic", "lakehouse", "warehouse",
+    "etl", "elt", "dbt", "snowflake", "pipeline", "dataops",
+}
+
 def score_job(title: str, description: str, profile: dict) -> int:
     """Score 0–10: title match (0-4) + skill overlap (0-4) + seniority (0-2)."""
+    title_lc = title.lower()
     text = (title + " " + (description or "")).lower()
     score = 0
 
-    # title match against target roles
+    # Hard gate: title must contain at least one data-domain keyword
+    if not any(kw in title_lc for kw in _TITLE_MUST_HAVE):
+        return 0
+
+    # title match against target roles (full phrase, not any single word)
     target_roles = [profile["target"]["primary_role"]] + profile["target"].get("secondary_roles", [])
     for role in target_roles:
-        if any(word.lower() in title.lower() for word in role.split()):
+        if role.lower() in title_lc:
             score += 3
             break
-    if "data engineer" in title.lower() or "analytics engineer" in title.lower():
+    if "data engineer" in title_lc or "analytics engineer" in title_lc:
         score += 1
 
     # skill keyword overlap

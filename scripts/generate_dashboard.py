@@ -1,6 +1,6 @@
 """
 Generate data/pipeline-dashboard.html from data/pipeline.md
-Defaults to showing only the latest scrape run, jobs posted within 24 hrs.
+Defaults to showing only the latest scrape run (URL-matched, no date filter).
 Run: python scripts/generate_dashboard.py
 """
 
@@ -33,7 +33,6 @@ def load_last_run():
         return json.loads(LAST_RUN_PATH.read_text(encoding="utf-8"))
     except Exception:
         return None
-
 
 
 def parse_pipeline():
@@ -124,10 +123,10 @@ def js_array(jobs):
 def generate_html(jobs, run_info):
     total        = len(jobs)
     new_jobs     = [j for j in jobs if j.get("is_new")]
+    new_count    = len(new_jobs)
     remote_count = sum(1 for j in new_jobs if j["remote"])
     high_count   = sum(1 for j in new_jobs if j["score"] >= 7)
 
-    run_date  = run_info["date"] if run_info else "—"
     run_count = run_info["count"] if run_info else 0
     run_ts    = run_info.get("timestamp", "")[:16].replace("T", " ") if run_info else "—"
 
@@ -195,7 +194,7 @@ def generate_html(jobs, run_info):
     <p>Senior Data Engineer · Germany · career-ops-plugin</p>
   </div>
   <div class="stats">
-    <div class="stat"><div class="n" id="stat-shown">{run_count}</div><div class="l">Showing</div></div>
+    <div class="stat"><div class="n" id="stat-shown">{new_count}</div><div class="l">Showing</div></div>
     <div class="stat"><div class="n" id="applied-stat">0</div><div class="l">Applied</div></div>
     <div class="stat"><div class="n">{remote_count}</div><div class="l">Remote</div></div>
     <div class="stat"><div class="n">{high_count}</div><div class="l">Score 7+</div></div>
@@ -377,7 +376,7 @@ def main():
             j["is_new"] = j["date_found"] == today
 
     new_count = sum(1 for j in jobs if j["is_new"])
-    print(f"New jobs for dashboard default view: {new_count}")
+    print(f"Latest run jobs showing: {new_count}")
 
     html = generate_html(jobs, run_info)
     OUTPUT_PATH.write_text(html, encoding="utf-8")
