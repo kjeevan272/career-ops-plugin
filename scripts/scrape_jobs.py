@@ -7,10 +7,12 @@ and appends new matches to data/pipeline.md.
 
 import sys
 import re
+import csv
 import json
 import yaml
 import warnings
-from datetime import date, datetime
+import requests
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
@@ -20,6 +22,7 @@ PROFILE_PATH   = ROOT / "data" / "profile.yml"
 APPS_PATH      = ROOT / "data" / "applications.md"
 PIPELINE_PATH  = ROOT / "data" / "pipeline.md"
 LAST_RUN_PATH  = ROOT / "data" / ".last-run.json"
+CAREERS_CSV    = ROOT / "data" / "workinglinks.csv"
 
 # ── profile ────────────────────────────────────────────────────────────────
 
@@ -151,6 +154,239 @@ def append_to_pipeline(matches: list):
     PIPELINE_PATH.write_text(content.rstrip() + "\n" + "\n".join(new_rows) + "\n", encoding="utf-8")
     print(f"\n[OK] Appended {len(new_rows)} new jobs to data/pipeline.md")
 
+# ── company career board scraping ──────────────────────────────────────────
+
+# Job board URLs to skip (covered by jobspy or not scrapeable)
+_SKIP_PATTERNS = [
+    "linkedin.com", "indeed.com", "glassdoor", "stepstone.de", "xing.com",
+    "monster.com", "arbeitsagentur.de", "talent.com", "jobsinmunich.com",
+    "jobware.de", "stellenanzeigen.de", "englishjobs.de", "yourenglishjob.com",
+    "english-jobs.com", "thelocal.com", "expatica.com", "arbeitnow.com",
+    "berlinstartupjobs.com", "wellfound.com", "welcometothejungle.com",
+    "landing.jobs", "nofluffjobs.com", "weworkremotely.com", "remoteok.com",
+    "remotive.com", "flexjobs.com", "justremote.co", "builtin.com",
+    "dice.com", "lhh.com", "hays.de", "michaelpage.de", "robertwalters.de",
+    "randstad.de", "adecco.com", "www.ashbyhq.com/careers", "my.greenhouse.io",
+]
+
+_DE_CITIES = {
+    "germany", "deutschland", "berlin", "munich", "münchen", "hamburg",
+    "frankfurt", "cologne", "köln", "düsseldorf", "freiburg", "stuttgart",
+    "dresden", "leipzig", "nuremberg", "nürnberg", "bonn", "darmstadt",
+    "heidelberg", "mannheim", "potsdam", "oldenburg", "mainz", "augsburg",
+}
+
+# Locations that signal a non-DE role even when "remote" is also present
+_NON_DE_MARKERS = {
+    "united states", "united kingdom", "australia", "canada", "malaysia",
+    "singapore", "india", "new zealand", "south africa", "brazil",
+    "san francisco", "new york", "los angeles", "seattle", "boston",
+    "london", "amsterdam", "paris", "sydney", "toronto",
+    "remote, us", "remote - us", "us-remote", "remote, usa", "remote - usa",
+    "remote (us", "remote (united", "remote-friendly, us",
+}
+
+def _is_de_location(loc: str) -> bool:
+    """True only if: no location specified, explicitly Germany, or purely global remote.
+    ATS boards return all open roles worldwide — be strict so non-DE roles don't leak in."""
+    if not loc or not loc.strip():
+        return True
+    loc_lc = loc.lower()
+    # Explicit German city/country
+    if any(k in loc_lc for k in _DE_CITIES):
+        return True
+    # Pure global-remote phrases with no country qualifier
+    if loc_lc.strip() in {"remote", "anywhere", "worldwide", "global", "remote-friendly",
+                           "fully remote", "100% remote", "distributed"}:
+        return True
+    # Everything else (Dublin, London, Paris, "Remote - US", etc.) → exclude
+    return False
+
+def load_career_sources():
+    """Parse workinglinks.csv → Greenhouse company slugs.
+    Ashby (client-rendered SPA, API auth-only) and Workable (API auth-only) are
+    skipped — their companies post on LinkedIn/Indeed and are caught by jobspy.
+    """
+    greenhouse = []
+    if not CAREERS_CSV.exists():
+        return greenhouse
+
+    with open(CAREERS_CSV, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            name = row.get("Company / Portal", "").strip()
+            url  = row.get("Site Link", "").strip()
+            if not url or not name:
+                continue
+            url_lc = url.lower()
+            if any(p in url_lc for p in _SKIP_PATTERNS):
+                continue
+            if "greenhouse.io/" in url_lc:
+                slug = url.split("greenhouse.io/")[-1].split("/")[0].split("?")[0]
+                if slug:
+                    greenhouse.append((name, slug))
+            # Ashby/Workable/company-specific pages: captured via LinkedIn/Indeed
+
+    return greenhouse
+
+
+def scrape_company_boards(profile, seen_urls, tracked_pairs):
+    """Scrape Greenhouse ATS boards listed in workinglinks.csv."""
+    greenhouse_list = load_career_sources()
+
+    if not greenhouse_list:
+        return []
+
+    results = []
+
+    # ATS boards return ALL open roles — require an explicit data/engineering keyword
+    # in the title (no description to score against)
+    _ATS_TITLE_KW = {
+        "data", "analytics", "analyst", "pipeline", "warehouse", "lakehouse",
+        "etl", "elt", "spark", "platform engineer", "data engineer",
+        "machine learning", "ml engineer", "ai engineer", "cloud engineer",
+        "infrastructure", "dataops", "devops", "architect", "dbt", "snowflake",
+    }
+
+    def _add(title, company, location, url, posted, source, desc=""):
+        if not title or not url:
+            return
+        # ATS: reject roles with no data/engineering keyword in the title
+        title_lc = title.lower()
+        if not any(kw in title_lc for kw in _ATS_TITLE_KW):
+            return
+        url_key = url.lower()
+        if url_key in seen_urls:
+            return
+        seen_urls.add(url_key)
+        pair = (company.lower(), normalize_title(title))
+        if pair in tracked_pairs:
+            return
+        tracked_pairs.add(pair)
+        if is_excluded(title):
+            return
+        score = score_job(title, desc, profile)
+        if score < 5:
+            return
+        results.append({
+            "title":       title,
+            "company":     company,
+            "location":    location or "—",
+            "score":       score,
+            "job_url":     url,
+            "is_remote":   "remote" in (location or "").lower(),
+            "source":      source,
+            "date_posted": posted or "—",
+        })
+
+    _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"}
+
+    # ── Greenhouse ──────────────────────────────────────────────────────────
+    print(f"\n>> Checking {len(greenhouse_list)} Greenhouse boards...")
+    for company_name, slug in greenhouse_list:
+        try:
+            resp = requests.get(
+                f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs",
+                headers=_HEADERS, timeout=10,
+            )
+            if resp.status_code != 200:
+                continue
+            for job in resp.json().get("jobs", []):
+                title  = job.get("title", "").strip()
+                url    = job.get("absolute_url", "").strip()
+                loc    = (job.get("location") or {}).get("name", "").strip()
+                posted = (job.get("updated_at") or "")[:10]
+                if not _is_de_location(loc):
+                    continue
+                _add(title, company_name, loc, url, posted, "greenhouse")
+        except Exception as e:
+            print(f"   [WARN] Greenhouse {slug}: {e}")
+
+    return results
+
+
+# ── Arbeitsagentur (German Federal Employment Agency) ──────────────────────
+
+_BA_BASE    = "https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v4/jobs"
+_BA_HEADERS = {"User-Agent": "Mozilla/5.0", "X-API-Key": "jobboerse-jobsuche"}
+
+def scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old: int = 7):
+    """Query the Bundesagentur für Arbeit public REST API (no auth required)."""
+    results = []
+    cutoff  = (date.today() - timedelta(days=days_old)).isoformat()
+
+    search_terms = [
+        profile["target"]["primary_role"],
+        "Data Analytics Engineer",
+        "Analytics Engineer",
+        "Cloud Data Engineer",
+        "Data Architect",
+    ]
+
+    print(f"\n>> Arbeitsagentur: searching {len(search_terms)} terms (last {days_old} days)...")
+
+    for term in search_terms:
+        try:
+            resp = requests.get(
+                _BA_BASE,
+                params={"was": term, "wo": "Deutschland", "angebotsart": 1,
+                        "page": 1, "size": 25},
+                headers=_BA_HEADERS,
+                timeout=15,
+            )
+            if resp.status_code != 200:
+                print(f"   [WARN] Arbeitsagentur '{term}': HTTP {resp.status_code}")
+                continue
+
+            for job in resp.json().get("stellenangebote", []):
+                pub = job.get("aktuelleVeroeffentlichungsdatum", "")
+                if pub and pub < cutoff:
+                    continue                # skip older than days_old
+
+                title   = job.get("titel", "").strip()
+                company = job.get("arbeitgeber", "").strip()
+                refnr   = job.get("refnr", "")
+                url     = f"https://www.arbeitsagentur.de/jobsuche/jobdetail/{refnr}"
+                ort     = job.get("arbeitsort", {})
+                city    = ort.get("ort") or ort.get("region") or "Germany"
+                loc     = f"{city}, Germany" if city != "Germany" else "Germany"
+
+                if not title or not refnr:
+                    continue
+                if is_excluded(title):
+                    continue
+
+                url_key = url.lower()
+                if url_key in seen_urls:
+                    continue
+                seen_urls.add(url_key)
+
+                pair = (company.lower(), normalize_title(title))
+                if pair in tracked_pairs:
+                    continue
+                tracked_pairs.add(pair)
+
+                score = score_job(title, "", profile)
+                if score < 4:
+                    continue
+
+                results.append({
+                    "title":       title,
+                    "company":     company,
+                    "location":    loc,
+                    "score":       score,
+                    "job_url":     url,
+                    "is_remote":   "remote" in title.lower(),
+                    "source":      "arbeitsagentur",
+                    "date_posted": pub or "—",
+                })
+
+        except Exception as e:
+            print(f"   [WARN] Arbeitsagentur '{term}': {e}")
+
+    if results:
+        print(f"   + {len(results)} from Arbeitsagentur")
+    return results
+
 # ── main ───────────────────────────────────────────────────────────────────
 
 def main():
@@ -251,6 +487,16 @@ def main():
         except Exception as e:
             print(f"   [WARN] Error scraping '{term}': {e}")
             continue
+
+    # ── company ATS boards (Greenhouse) ─────────────────────────────────────
+    board_jobs = scrape_company_boards(profile, seen_urls, tracked_pairs)
+    if board_jobs:
+        all_jobs.extend(board_jobs)
+        print(f"   + {len(board_jobs)} from company ATS boards")
+
+    # ── Bundesagentur für Arbeit ─────────────────────────────────────────────
+    ba_jobs = scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old=7)
+    all_jobs.extend(ba_jobs)
 
     # sort by score desc
     all_jobs.sort(key=lambda x: x["score"], reverse=True)

@@ -7,7 +7,7 @@ Run: python scripts/generate_dashboard.py
 import json
 import re
 import sys
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 ROOT           = Path(__file__).parent.parent
@@ -34,15 +34,6 @@ def load_last_run():
     except Exception:
         return None
 
-
-def is_posted_recent(posted_str: str, cutoff: date) -> bool:
-    """True if posted date is within cutoff, or unparseable (scraper already used hours_old=24)."""
-    if not posted_str or posted_str.strip() in ("—", "nan", "NaT", "None", ""):
-        return True
-    try:
-        return date.fromisoformat(posted_str.strip()[:10]) >= cutoff
-    except (ValueError, TypeError):
-        return True
 
 
 def parse_pipeline():
@@ -212,7 +203,7 @@ def generate_html(jobs, run_info):
 </header>
 <div class="run-bar">
   <span>Last run: <strong>{run_ts}</strong></span>
-  <span>New jobs: <strong>{run_count}</strong> posted in last 24 hrs</span>
+  <span>New this run: <strong>{run_count}</strong></span>
   <span>Total in pipeline: <strong>{total}</strong></span>
   <div class="view-toggle">
     <button class="view-btn active" id="btn-new" onclick="setView('new')">Latest run</button>
@@ -373,20 +364,17 @@ def main():
     print(f"Found {len(jobs)} jobs total")
 
     run_info = load_last_run()
-    cutoff   = date.today() - timedelta(days=1)
 
     if run_info:
         last_run_urls = set(run_info.get("urls", []))
         print(f"Last run: {run_info['date']} · {run_info['count']} new jobs")
         for j in jobs:
-            j["is_new"] = (j["url"] in last_run_urls
-                           and is_posted_recent(j["posted"], cutoff))
+            j["is_new"] = j["url"] in last_run_urls
     else:
         print("No run state found — marking today's jobs as new")
         today = date.today().isoformat()
         for j in jobs:
-            j["is_new"] = (j["date_found"] == today
-                           and is_posted_recent(j["posted"], cutoff))
+            j["is_new"] = j["date_found"] == today
 
     new_count = sum(1 for j in jobs if j["is_new"])
     print(f"New jobs for dashboard default view: {new_count}")
