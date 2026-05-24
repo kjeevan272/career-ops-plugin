@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python *)",
       "PowerShell(python C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\scripts\\\\generate_dashboard.py 2>&1)",
-      "PowerShell(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\pipeline-dashboard.html\")"
+      "PowerShell(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\pipeline-dashboard.html\")",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kumar-Kondasingu-Haufe-Group-Senior-Data-Engineer.html\"; Start-Sleep -Milliseconds 800; Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kumar-Kondasingu-Haufe-Group-Cover-Letter.html\")"
     ]
   }
 }

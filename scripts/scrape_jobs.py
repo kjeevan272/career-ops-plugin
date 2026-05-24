@@ -7,17 +7,19 @@ and appends new matches to data/pipeline.md.
 
 import sys
 import re
+import json
 import yaml
 import warnings
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
 ROOT = Path(__file__).parent.parent
-PROFILE_PATH  = ROOT / "data" / "profile.yml"
-APPS_PATH     = ROOT / "data" / "applications.md"
-PIPELINE_PATH = ROOT / "data" / "pipeline.md"
+PROFILE_PATH   = ROOT / "data" / "profile.yml"
+APPS_PATH      = ROOT / "data" / "applications.md"
+PIPELINE_PATH  = ROOT / "data" / "pipeline.md"
+LAST_RUN_PATH  = ROOT / "data" / ".last-run.json"
 
 # ── profile ────────────────────────────────────────────────────────────────
 
@@ -256,6 +258,15 @@ def main():
     print(f"\n{'='*60}")
     print(f"SCRAPE COMPLETE — {len(all_jobs)} new matching jobs found")
     print(f"{'='*60}\n")
+
+    # always save run state so dashboard knows what's current
+    state = {
+        "date": date.today().isoformat(),
+        "timestamp": datetime.now().isoformat(),
+        "count": len(all_jobs),
+        "urls": [j["job_url"] for j in all_jobs],
+    }
+    LAST_RUN_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
     if not all_jobs:
         print("No new matches found. All results were filtered or already tracked.")
