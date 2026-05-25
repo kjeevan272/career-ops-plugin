@@ -124,11 +124,15 @@ def generate_html(jobs, run_info):
     total        = len(jobs)
     new_jobs     = [j for j in jobs if j.get("is_new")]
     new_count    = len(new_jobs)
-    remote_count = sum(1 for j in new_jobs if j["remote"])
-    high_count   = sum(1 for j in new_jobs if j["score"] >= 7)
+    all_remote   = sum(1 for j in jobs if j["remote"])
+    all_high     = sum(1 for j in jobs if j["score"] >= 7)
 
     run_count = run_info["count"] if run_info else 0
     run_ts    = run_info.get("timestamp", "")[:16].replace("T", " ") if run_info else "—"
+
+    # Sort: new jobs first (by score desc), then old (by score desc)
+    sorted_jobs = sorted(new_jobs, key=lambda j: -j["score"]) + \
+                  sorted([j for j in jobs if not j.get("is_new")], key=lambda j: -j["score"])
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -147,24 +151,23 @@ def generate_html(jobs, run_info):
     .stat .l{{font-size:11px;color:#99a;text-transform:uppercase}}
     .run-bar{{background:#0f3460;border-bottom:1px solid #1a2a5a;padding:8px 28px;font-size:12px;color:#7eb8f7;display:flex;align-items:center;gap:16px;flex-wrap:wrap}}
     .run-bar strong{{color:#fff}}
-    .view-toggle{{margin-left:auto;display:flex;gap:0}}
-    .view-btn{{padding:5px 14px;border:1px solid #4a6fa5;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:#7eb8f7;transition:all .15s}}
-    .view-btn:first-child{{border-radius:6px 0 0 6px}}
-    .view-btn:last-child{{border-radius:0 6px 6px 0;border-left:none}}
-    .view-btn.active{{background:#1a73e8;border-color:#1a73e8;color:#fff}}
     .controls{{background:#fff;border-bottom:1px solid #e0e0e0;padding:12px 28px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}}
     .controls input,.controls select{{border:1px solid #ccc;border-radius:6px;padding:6px 10px;font-size:13px;outline:none}}
     .controls input{{width:220px}}
     .controls input:focus,.controls select:focus{{border-color:#4a90e2}}
     .count-badge{{margin-left:auto;background:#e8f0fe;color:#1a73e8;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600}}
     .table-wrap{{padding:16px 28px;overflow-x:auto}}
+    .section-divider{{padding:8px 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#666;border-bottom:2px solid #e0e0e0;margin-bottom:2px}}
+    .section-divider.new-section{{color:#1a73e8;border-color:#1a73e8}}
     table{{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}}
     thead tr{{background:#1a1a2e;color:#fff}}
-    thead th{{padding:10px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;user-select:none;white-space:nowrap}}
-    thead th:hover{{background:#2d2d4e}}
+    thead th{{padding:10px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}}
     tbody tr{{border-bottom:1px solid #f0f0f0;transition:background .12s}}
     tbody tr:hover{{background:#f7f9ff}}
     tbody tr.applied{{opacity:.4;background:#f9f9f9}}
+    tbody tr.is-new{{background:#f0f7ff}}
+    tbody tr.is-new:hover{{background:#e3f0ff}}
+    tbody tr.separator-row td{{background:#f8f8f8;padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;border-top:3px solid #ddd}}
     tbody tr:last-child{{border-bottom:none}}
     td{{padding:9px 12px;vertical-align:middle}}
     .score{{display:inline-flex;align-items:center;justify-content:center;width:40px;height:24px;border-radius:12px;font-size:11px;font-weight:700;color:#fff}}
@@ -172,14 +175,18 @@ def generate_html(jobs, run_info):
     .company{{font-weight:600}}
     .role{{color:#333;max-width:280px;font-size:13px}}
     .badge{{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap}}
+    .bnew{{background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}}
     .br{{background:#e6f4ea;color:#137333}}.bo{{background:#f1f3f4;color:#666}}
     .bli{{background:#dbeafe;color:#1d4ed8}}.bin{{background:#fef3c7;color:#92400e}}
+    .bgr{{background:#f3e8ff;color:#6b21a8}}.bba{{background:#fce7f3;color:#9d174d}}
     .posted{{font-size:11px;color:#888;white-space:nowrap}}
     .location{{color:#555;font-size:12px;max-width:160px}}
     .btn-apply{{display:inline-block;padding:5px 13px;background:#1a73e8;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-right:4px;transition:background .15s;white-space:nowrap}}
     .btn-apply:hover{{background:#1557b0}}
     .btn-apply.linkedin{{background:#0a66c2}}.btn-apply.linkedin:hover{{background:#084e96}}
     .btn-apply.indeed{{background:#2164f3}}.btn-apply.indeed:hover{{background:#1a4fcf}}
+    .btn-apply.greenhouse{{background:#6b21a8}}.btn-apply.greenhouse:hover{{background:#581c87}}
+    .btn-apply.arbeitsagentur{{background:#9d174d}}.btn-apply.arbeitsagentur:hover{{background:#831843}}
     .btn-done{{padding:5px 10px;border:1px solid #ccc;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#555;white-space:nowrap;transition:all .15s}}
     .btn-done:hover{{background:#fef3c7;border-color:#e3a008;color:#92400e}}
     .btn-done.applied{{background:#e6f4ea;border-color:#137333;color:#137333}}
@@ -194,20 +201,17 @@ def generate_html(jobs, run_info):
     <p>Senior Data Engineer · Germany · career-ops-plugin</p>
   </div>
   <div class="stats">
-    <div class="stat"><div class="n" id="stat-shown">{new_count}</div><div class="l">Showing</div></div>
+    <div class="stat"><div class="n" id="stat-shown">{total}</div><div class="l">Showing</div></div>
+    <div class="stat"><div class="n" style="color:#7eb8f7">{new_count}</div><div class="l">New today</div></div>
     <div class="stat"><div class="n" id="applied-stat">0</div><div class="l">Applied</div></div>
-    <div class="stat"><div class="n">{remote_count}</div><div class="l">Remote</div></div>
-    <div class="stat"><div class="n">{high_count}</div><div class="l">Score 7+</div></div>
+    <div class="stat"><div class="n">{all_remote}</div><div class="l">Remote</div></div>
+    <div class="stat"><div class="n">{all_high}</div><div class="l">Score 7+</div></div>
   </div>
 </header>
 <div class="run-bar">
   <span>Last run: <strong>{run_ts}</strong></span>
   <span>New this run: <strong>{run_count}</strong></span>
   <span>Total in pipeline: <strong>{total}</strong></span>
-  <div class="view-toggle">
-    <button class="view-btn active" id="btn-new" onclick="setView('new')">Latest run</button>
-    <button class="view-btn" id="btn-all" onclick="setView('all')">All time</button>
-  </div>
 </div>
 <div class="controls">
   <input type="text" id="search" placeholder="Search role, company, location...">
@@ -226,10 +230,17 @@ def generate_html(jobs, run_info):
     <option value="all">All sources</option>
     <option value="linkedin">LinkedIn</option>
     <option value="indeed">Indeed</option>
+    <option value="greenhouse">Greenhouse</option>
+    <option value="arbeitsagentur">Arbeitsagentur</option>
+  </select>
+  <select id="filter-new">
+    <option value="all">All jobs</option>
+    <option value="new">New only</option>
+    <option value="old">Previous only</option>
   </select>
   <select id="filter-applied">
-    <option value="all">All jobs</option>
-    <option value="new">Not applied</option>
+    <option value="all">All statuses</option>
+    <option value="unapplied">Not applied</option>
     <option value="applied">Applied only</option>
   </select>
   <span class="count-badge" id="visible-count">— jobs</span>
@@ -266,7 +277,6 @@ function saveApplied(set) {{
 }}
 
 let appliedSet = loadApplied();
-let currentView = "new";  // "new" = latest run only | "all" = everything
 
 function toggleApplied(url) {{
   if (appliedSet.has(url)) appliedSet.delete(url);
@@ -284,14 +294,16 @@ function scoreClass(s) {{
   return s>=9?"s9":s>=8?"s8":s>=7?"s7":s>=6?"s6":s>=5?"s5":"s4";
 }}
 
-const ALL_JOBS = {js_array(jobs)};
-
-function setView(v) {{
-  currentView = v;
-  document.getElementById("btn-new").classList.toggle("active", v==="new");
-  document.getElementById("btn-all").classList.toggle("active", v==="all");
-  applyFilters();
+function srcBadge(s) {{
+  if (s==="linkedin") return ["bli","LinkedIn"];
+  if (s==="indeed")   return ["bin","Indeed"];
+  if (s==="greenhouse") return ["bgr","Greenhouse"];
+  if (s==="arbeitsagentur") return ["bba","Arbeit"];
+  return ["bo", s];
 }}
+
+// Jobs sorted: new first (by score desc), then old (by score desc)
+const ALL_JOBS = {js_array(sorted_jobs)};
 
 function render(data) {{
   const tbody = document.getElementById("tbody");
@@ -300,29 +312,49 @@ function render(data) {{
     tbody.innerHTML = "";
     document.getElementById("no-results").style.display = "block";
     document.getElementById("jobs-table").style.display = "none";
-  }} else {{
-    document.getElementById("no-results").style.display = "none";
-    document.getElementById("jobs-table").style.display = "table";
-    const srcClass = s => s==="linkedin"?"bli":s==="indeed"?"bin":"bo";
-    tbody.innerHTML = data.map((j, idx) => {{
-      const isApplied = appliedSet.has(j.url);
-      const src = j.source==="linkedin"?"LinkedIn":j.source==="indeed"?"Indeed":j.source;
-      return `<tr class="${{isApplied?"applied":""}}">
-        <td style="color:#999;font-size:11px">${{idx+1}}</td>
-        <td><span class="score ${{scoreClass(j.score)}}">${{j.score}}/10</span></td>
-        <td class="company">${{j.company}}</td>
-        <td class="role">${{j.role}}</td>
-        <td class="location">${{j.location}}</td>
-        <td class="posted">${{j.posted}}</td>
-        <td><span class="badge ${{j.remote?"br":"bo"}}">${{j.remote?"Remote":"On-site"}}</span></td>
-        <td><span class="badge ${{srcClass(j.source)}}">${{src}}</span></td>
-        <td>
-          <a class="btn-apply ${{j.source}}" href="${{j.url}}" target="_blank" rel="noopener">Apply</a>
-          <button class="btn-done ${{isApplied?"applied":""}}" onclick="toggleApplied('${{j.url}}')">${{isApplied?"Applied ✓":"Mark Applied"}}</button>
-        </td>
-      </tr>`;
-    }}).join("");
+    return;
   }}
+  document.getElementById("no-results").style.display = "none";
+  document.getElementById("jobs-table").style.display = "table";
+
+  let html = "";
+  let shownNew = false, shownOld = false;
+
+  data.forEach((j, idx) => {{
+    const isApplied = appliedSet.has(j.url);
+    const [sc, sl] = srcBadge(j.source);
+    const applyClass = j.source==="linkedin"?"linkedin":j.source==="indeed"?"indeed":j.source==="greenhouse"?"greenhouse":j.source==="arbeitsagentur"?"arbeitsagentur":"";
+
+    // Section dividers
+    if (j.isNew && !shownNew) {{
+      shownNew = true;
+      html += `<tr class="separator-row"><td colspan="9">&#9733; New from latest run ({new_count} jobs)</td></tr>`;
+    }}
+    if (!j.isNew && !shownOld) {{
+      shownOld = true;
+      html += `<tr class="separator-row"><td colspan="9">Previous runs ({total - new_count} jobs)</td></tr>`;
+    }}
+
+    html += `<tr class="${{isApplied?"applied":""}} ${{j.isNew?"is-new":""}}">
+      <td style="color:#999;font-size:11px">${{idx+1}}</td>
+      <td>
+        <span class="score ${{scoreClass(j.score)}}">${{j.score}}/10</span>
+        ${{j.isNew?'<span class="badge bnew" style="margin-left:3px">NEW</span>':''}}
+      </td>
+      <td class="company">${{j.company}}</td>
+      <td class="role">${{j.role}}</td>
+      <td class="location">${{j.location}}</td>
+      <td class="posted">${{j.posted}}</td>
+      <td><span class="badge ${{j.remote?"br":"bo"}}">${{j.remote?"Remote":"On-site"}}</span></td>
+      <td><span class="badge ${{sc}}">${{sl}}</span></td>
+      <td>
+        <a class="btn-apply ${{applyClass}}" href="${{j.url}}" target="_blank" rel="noopener">Apply</a>
+        <button class="btn-done ${{isApplied?"applied":""}}" onclick="toggleApplied('${{j.url}}')">${{isApplied?"Applied ✓":"Mark Applied"}}</button>
+      </td>
+    </tr>`;
+  }});
+
+  tbody.innerHTML = html;
   document.getElementById("visible-count").textContent = `${{data.length}} job${{data.length!==1?"s":""}}`;
 }}
 
@@ -331,25 +363,26 @@ function applyFilters() {{
   const minScore = parseInt(document.getElementById("filter-score").value) || 0;
   const remFilt  = document.getElementById("filter-remote").value;
   const srcFilt  = document.getElementById("filter-source").value;
+  const newFilt  = document.getElementById("filter-new").value;
   const appFilt  = document.getElementById("filter-applied").value;
 
-  let pool = currentView === "new" ? ALL_JOBS.filter(j => j.isNew) : ALL_JOBS;
-
-  render(pool.filter(j => {{
+  render(ALL_JOBS.filter(j => {{
     const text = (j.company + " " + j.role + " " + j.location).toLowerCase();
     if (q && !text.includes(q)) return false;
     if (j.score < minScore) return false;
     if (remFilt === "remote" && !j.remote) return false;
     if (remFilt === "onsite" && j.remote) return false;
     if (srcFilt !== "all" && j.source !== srcFilt) return false;
-    if (appFilt === "new" && appliedSet.has(j.url)) return false;
+    if (newFilt === "new" && !j.isNew) return false;
+    if (newFilt === "old" && j.isNew) return false;
+    if (appFilt === "unapplied" && appliedSet.has(j.url)) return false;
     if (appFilt === "applied" && !appliedSet.has(j.url)) return false;
     return true;
   }}));
 }}
 
 updateAppliedStat();
-["search","filter-score","filter-remote","filter-source","filter-applied"]
+["search","filter-score","filter-remote","filter-source","filter-new","filter-applied"]
   .forEach(id => document.getElementById(id).addEventListener("input", applyFilters));
 applyFilters();
 </script>

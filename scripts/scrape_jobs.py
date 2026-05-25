@@ -41,35 +41,20 @@ def normalize_title(title: str) -> str:
     return t
 
 def load_tracked_urls():
-    """Collect URLs already in applications.md and pipeline.md."""
+    """Collect URLs already in applications.md and pipeline.md.
+    Only URL-based dedup against history — pair dedup runs only within
+    the current session to avoid blocking new postings from known companies.
+    """
     urls = set()
-    companies_roles = set()
-
-    _skip = {"company", "posted", "date found", "---", ""}
 
     for path in [APPS_PATH, PIPELINE_PATH]:
         if not path.exists():
             continue
         for line in path.read_text(encoding="utf-8").splitlines():
-            # extract markdown links [text](url)
             for url in re.findall(r'\(https?://[^\)]+\)', line):
                 urls.add(url.strip("()").lower())
-            # extract company|role pairs — handle both pipeline formats:
-            #   old (8-col): | Date Found | Company | Role | Score | ...
-            #   new (10-col): | Date Found | Posted | Company | Role | Score | ...
-            cols = [c.strip() for c in line.split("|")]
-            if len(cols) >= 12:          # new 10-column format
-                company = cols[3].lower()
-                role    = normalize_title(cols[4])
-            elif len(cols) >= 10:        # old 8-column format
-                company = cols[2].lower()
-                role    = normalize_title(cols[3])
-            else:
-                continue
-            if company not in _skip and role:
-                companies_roles.add((company, role))
 
-    return urls, companies_roles
+    return urls
 
 # ── scoring ────────────────────────────────────────────────────────────────
 
@@ -410,7 +395,8 @@ def main():
     profile = load_profile()
 
     print("Loading tracked jobs for dedup...")
-    tracked_urls, tracked_pairs = load_tracked_urls()
+    tracked_urls = load_tracked_urls()
+    session_pairs = set()   # within-run pair dedup only (catches same job on LinkedIn+Indeed)
 
     search_terms = [
         profile["target"]["primary_role"],
@@ -459,17 +445,17 @@ def main():
                 if not title or not company:
                     continue
 
-                # dedup by URL
+                # dedup by URL (against history + current session)
                 url_key = url.lower()
                 if url_key in seen_urls:
                     continue
                 seen_urls.add(url_key)
 
-                # dedup by normalized company+role pair
+                # within-session pair dedup: catches same job on LinkedIn AND Indeed
                 pair = (company.lower(), normalize_title(title))
-                if pair in tracked_pairs:
+                if pair in session_pairs:
                     continue
-                tracked_pairs.add(pair)
+                session_pairs.add(pair)
 
                 # exclude junior/intern
                 if is_excluded(title):
@@ -499,13 +485,13 @@ def main():
             continue
 
     # ── company ATS boards (Greenhouse) ─────────────────────────────────────
-    board_jobs = scrape_company_boards(profile, seen_urls, tracked_pairs)
+    board_jobs = scrape_company_boards(profile, seen_urls, session_pairs)
     if board_jobs:
         all_jobs.extend(board_jobs)
         print(f"   + {len(board_jobs)} from company ATS boards")
 
     # ── Bundesagentur für Arbeit ─────────────────────────────────────────────
-    ba_jobs = scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old=7)
+    ba_jobs = scrape_arbeitsagentur(profile, seen_urls, session_pairs, days_old=7)
     all_jobs.extend(ba_jobs)
 
     # sort by score desc
