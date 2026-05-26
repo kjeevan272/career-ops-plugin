@@ -130,9 +130,8 @@ def generate_html(jobs, run_info):
     run_count = run_info["count"] if run_info else 0
     run_ts    = run_info.get("timestamp", "")[:16].replace("T", " ") if run_info else "—"
 
-    # Sort: new jobs first (by score desc), then old (by score desc)
-    sorted_jobs = sorted(new_jobs, key=lambda j: -j["score"]) + \
-                  sorted([j for j in jobs if not j.get("is_new")], key=lambda j: -j["score"])
+    # Sort: date_found desc, score desc within same date; new-run jobs naturally float to top
+    sorted_jobs = sorted(jobs, key=lambda j: (j["date_found"], j["score"]), reverse=True)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
