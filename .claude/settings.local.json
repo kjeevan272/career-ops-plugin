@@ -10,7 +10,10 @@
       "PowerShell(python C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\scripts\\\\_test_stepstone.py 2>&1)",
       "Bash(start *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-AnalyticsEngineer.html\")",
+      "Bash(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-CoverLetter.html\")",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-AnalyticsEngineer.html\"; Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-CoverLetter.html\")"
     ]
   }
 }
