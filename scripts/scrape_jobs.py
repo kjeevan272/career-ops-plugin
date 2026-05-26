@@ -1,14 +1,15 @@
 """
 Job scraper for career-ops-plugin.
-Searches LinkedIn and Indeed for matching roles in Germany,
-scores them against the profile, deduplicates against applications.md,
-and appends new matches to data/pipeline.md.
+Sources: LinkedIn · Indeed · Glassdoor · Google Jobs (via jobspy)
+         Greenhouse · Ashby · Lever (ATS direct APIs)
+         Bundesagentur für Arbeit · Arbeitnow · StepStone RSS
 """
 
 import sys
 import re
 import csv
 import json
+import xml.etree.ElementTree as ET
 import yaml
 import warnings
 import requests
@@ -17,7 +18,7 @@ from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
-ROOT = Path(__file__).parent.parent
+ROOT           = Path(__file__).parent.parent
 PROFILE_PATH   = ROOT / "data" / "profile.yml"
 APPS_PATH      = ROOT / "data" / "applications.md"
 PIPELINE_PATH  = ROOT / "data" / "pipeline.md"
@@ -33,27 +34,21 @@ def load_profile():
 # ── dedup ──────────────────────────────────────────────────────────────────
 
 def normalize_title(title: str) -> str:
-    """Lowercase, strip gender markers and punctuation for fuzzy dedup."""
     t = title.lower()
-    t = re.sub(r'\([^)]*\)', '', t)          # remove (m/f/d), (all genders), etc.
-    t = re.sub(r'[^\w\s]', ' ', t)           # strip punctuation
+    t = re.sub(r'\([^)]*\)', '', t)
+    t = re.sub(r'[^\w\s]', ' ', t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
 def load_tracked_urls():
-    """Collect URLs already in applications.md and pipeline.md.
-    Only URL-based dedup against history — pair dedup runs only within
-    the current session to avoid blocking new postings from known companies.
-    """
+    """Collect URLs already in applications.md and pipeline.md."""
     urls = set()
-
     for path in [APPS_PATH, PIPELINE_PATH]:
         if not path.exists():
             continue
         for line in path.read_text(encoding="utf-8").splitlines():
             for url in re.findall(r'\(https?://[^\)]+\)', line):
                 urls.add(url.strip("()").lower())
-
     return urls
 
 # ── scoring ────────────────────────────────────────────────────────────────
@@ -78,16 +73,11 @@ _TITLE_MUST_HAVE = {
 }
 
 def score_job(title: str, description: str, profile: dict) -> int:
-    """Score 0–10: title match (0-4) + skill overlap (0-4) + seniority (0-2)."""
     title_lc = title.lower()
     text = (title + " " + (description or "")).lower()
     score = 0
-
-    # Hard gate: title must contain at least one data-domain keyword
     if not any(kw in title_lc for kw in _TITLE_MUST_HAVE):
         return 0
-
-    # title match against target roles (full phrase, not any single word)
     target_roles = [profile["target"]["primary_role"]] + profile["target"].get("secondary_roles", [])
     for role in target_roles:
         if role.lower() in title_lc:
@@ -95,23 +85,17 @@ def score_job(title: str, description: str, profile: dict) -> int:
             break
     if "data engineer" in title_lc or "analytics engineer" in title_lc:
         score += 1
-
-    # skill keyword overlap
     matched = sum(1 for kw in SKILL_KEYWORDS if kw in text)
     score += min(4, matched // 2)
-
-    # seniority signals
     seniority_words = ["senior", "lead", "principal", "staff", "head of", "sr."]
     if any(w in title.lower() for w in seniority_words):
         score += 2
     elif any(w in text for w in seniority_words):
         score += 1
-
     return min(score, 10)
 
 def is_excluded(title: str) -> bool:
-    title_lower = title.lower()
-    return any(kw in title_lower for kw in EXCLUDE_KEYWORDS)
+    return any(kw in title.lower() for kw in EXCLUDE_KEYWORDS)
 
 # ── pipeline file ──────────────────────────────────────────────────────────
 
@@ -124,14 +108,11 @@ PIPELINE_HEADER = """# Job Pipeline
 def append_to_pipeline(matches: list):
     if not matches:
         return
-
     if not PIPELINE_PATH.exists():
         PIPELINE_PATH.write_text(PIPELINE_HEADER, encoding="utf-8")
-
     content = PIPELINE_PATH.read_text(encoding="utf-8")
     if "| Date Found |" not in content:
         content = PIPELINE_HEADER
-
     today = date.today().isoformat()
     new_rows = []
     for m in matches:
@@ -145,13 +126,11 @@ def append_to_pipeline(matches: list):
             f"[Link]({url}) | New |"
         )
         new_rows.append(row)
-
     PIPELINE_PATH.write_text(content.rstrip() + "\n" + "\n".join(new_rows) + "\n", encoding="utf-8")
     print(f"\n[OK] Appended {len(new_rows)} new jobs to data/pipeline.md")
 
-# ── company career board scraping ──────────────────────────────────────────
+# ── location helpers ───────────────────────────────────────────────────────
 
-# Job board URLs to skip (covered by jobspy or not scrapeable)
 _SKIP_PATTERNS = [
     "linkedin.com", "indeed.com", "glassdoor", "stepstone.de", "xing.com",
     "monster.com", "arbeitsagentur.de", "talent.com", "jobsinmunich.com",
@@ -161,7 +140,8 @@ _SKIP_PATTERNS = [
     "landing.jobs", "nofluffjobs.com", "weworkremotely.com", "remoteok.com",
     "remotive.com", "flexjobs.com", "justremote.co", "builtin.com",
     "dice.com", "lhh.com", "hays.de", "michaelpage.de", "robertwalters.de",
-    "randstad.de", "adecco.com", "www.ashbyhq.com/careers", "my.greenhouse.io",
+    "randstad.de", "adecco.com", "my.greenhouse.io", "www.ashbyhq.com/careers",
+    "apply.workable.com",
 ]
 
 _DE_CITIES = {
@@ -169,9 +149,9 @@ _DE_CITIES = {
     "frankfurt", "cologne", "köln", "düsseldorf", "freiburg", "stuttgart",
     "dresden", "leipzig", "nuremberg", "nürnberg", "bonn", "darmstadt",
     "heidelberg", "mannheim", "potsdam", "oldenburg", "mainz", "augsburg",
+    "essen", "dortmund", "hannover", "karlsruhe", "wiesbaden", "münster",
 }
 
-# Locations that signal a non-DE role even when "remote" is also present
 _NON_DE_MARKERS = {
     "united states", "united kingdom", "australia", "canada", "malaysia",
     "singapore", "india", "new zealand", "south africa", "brazil",
@@ -182,59 +162,56 @@ _NON_DE_MARKERS = {
 }
 
 def _is_de_location(loc: str) -> bool:
-    """True only if: no location specified, explicitly Germany, or purely global remote.
-    ATS boards return all open roles worldwide — be strict so non-DE roles don't leak in."""
     if not loc or not loc.strip():
         return True
     loc_lc = loc.lower()
-    # Explicit German city/country
     if any(k in loc_lc for k in _DE_CITIES):
         return True
-    # Pure global-remote phrases with no country qualifier
+    if any(k in loc_lc for k in _NON_DE_MARKERS):
+        return False
     if loc_lc.strip() in {"remote", "anywhere", "worldwide", "global", "remote-friendly",
-                           "fully remote", "100% remote", "distributed"}:
+                           "fully remote", "100% remote", "distributed", "europe"}:
         return True
-    # Everything else (Dublin, London, Paris, "Remote - US", etc.) → exclude
     return False
 
+# ── ATS board scraping (Greenhouse · Ashby · Lever) ────────────────────────
+
 def load_career_sources():
-    """Parse workinglinks.csv → Greenhouse company slugs.
-    Ashby (client-rendered SPA, API auth-only) and Workable (API auth-only) are
-    skipped — their companies post on LinkedIn/Indeed and are caught by jobspy.
-    """
-    greenhouse = []
+    """Parse workinglinks.csv → Greenhouse, Ashby, and Lever company slugs."""
+    greenhouse, ashby, lever = [], [], []
     if not CAREERS_CSV.exists():
-        return greenhouse
+        return greenhouse, ashby, lever
 
     with open(CAREERS_CSV, encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            name = row.get("Company / Portal", "").strip()
-            url  = row.get("Site Link", "").strip()
+            name  = row.get("Company / Portal", "").strip()
+            url   = row.get("Site Link", "").strip()
             if not url or not name:
                 continue
             url_lc = url.lower()
             if any(p in url_lc for p in _SKIP_PATTERNS):
                 continue
-            if "greenhouse.io/" in url_lc:
+            if "greenhouse.io/" in url_lc and "my.greenhouse.io" not in url_lc:
                 slug = url.split("greenhouse.io/")[-1].split("/")[0].split("?")[0]
                 if slug:
                     greenhouse.append((name, slug))
-            # Ashby/Workable/company-specific pages: captured via LinkedIn/Indeed
+            elif "jobs.ashbyhq.com/" in url_lc:
+                slug = url.split("jobs.ashbyhq.com/")[-1].split("/")[0].split("?")[0]
+                if slug:
+                    ashby.append((name, slug))
+            elif "jobs.lever.co/" in url_lc:
+                slug = url.split("jobs.lever.co/")[-1].split("/")[0].split("?")[0]
+                if slug:
+                    lever.append((name, slug))
 
-    return greenhouse
+    return greenhouse, ashby, lever
 
 
 def scrape_company_boards(profile, seen_urls, tracked_pairs):
-    """Scrape Greenhouse ATS boards listed in workinglinks.csv."""
-    greenhouse_list = load_career_sources()
-
-    if not greenhouse_list:
-        return []
-
+    """Scrape Greenhouse, Ashby, and Lever ATS boards from workinglinks.csv."""
+    greenhouse_list, ashby_list, lever_list = load_career_sources()
     results = []
 
-    # ATS boards return ALL open roles — require an explicit data/engineering keyword
-    # in the title (no description to score against)
     _ATS_TITLE_KW = {
         "data", "analytics", "analyst", "pipeline", "warehouse", "lakehouse",
         "etl", "elt", "spark", "platform engineer", "data engineer",
@@ -245,9 +222,7 @@ def scrape_company_boards(profile, seen_urls, tracked_pairs):
     def _add(title, company, location, url, posted, source, desc=""):
         if not title or not url:
             return
-        # ATS: reject roles with no data/engineering keyword in the title
-        title_lc = title.lower()
-        if not any(kw in title_lc for kw in _ATS_TITLE_KW):
+        if not any(kw in title.lower() for kw in _ATS_TITLE_KW):
             return
         url_key = url.lower()
         if url_key in seen_urls:
@@ -276,25 +251,76 @@ def scrape_company_boards(profile, seen_urls, tracked_pairs):
     _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"}
 
     # ── Greenhouse ──────────────────────────────────────────────────────────
-    print(f"\n>> Checking {len(greenhouse_list)} Greenhouse boards...")
-    for company_name, slug in greenhouse_list:
-        try:
-            resp = requests.get(
-                f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs",
-                headers=_HEADERS, timeout=10,
-            )
-            if resp.status_code != 200:
-                continue
-            for job in resp.json().get("jobs", []):
-                title  = job.get("title", "").strip()
-                url    = job.get("absolute_url", "").strip()
-                loc    = (job.get("location") or {}).get("name", "").strip()
-                posted = (job.get("updated_at") or "")[:10]
-                if not _is_de_location(loc):
+    if greenhouse_list:
+        print(f"\n>> Checking {len(greenhouse_list)} Greenhouse boards...")
+        for company_name, slug in greenhouse_list:
+            try:
+                resp = requests.get(
+                    f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs",
+                    headers=_HEADERS, timeout=10,
+                )
+                if resp.status_code != 200:
                     continue
-                _add(title, company_name, loc, url, posted, "greenhouse")
-        except Exception as e:
-            print(f"   [WARN] Greenhouse {slug}: {e}")
+                for job in resp.json().get("jobs", []):
+                    title  = job.get("title", "").strip()
+                    url    = job.get("absolute_url", "").strip()
+                    loc    = (job.get("location") or {}).get("name", "").strip()
+                    posted = (job.get("updated_at") or "")[:10]
+                    if not _is_de_location(loc):
+                        continue
+                    _add(title, company_name, loc, url, posted, "greenhouse")
+            except Exception as e:
+                print(f"   [WARN] Greenhouse {slug}: {e}")
+
+    # ── Ashby ───────────────────────────────────────────────────────────────
+    if ashby_list:
+        print(f"\n>> Checking {len(ashby_list)} Ashby boards...")
+        for company_name, slug in ashby_list:
+            try:
+                resp = requests.post(
+                    "https://api.ashbyhq.com/posting-public/job-board",
+                    json={"organizationHostedJobsPageName": slug},
+                    headers=_HEADERS, timeout=10,
+                )
+                if resp.status_code != 200:
+                    continue
+                for job in resp.json().get("jobPostings", []):
+                    title   = job.get("title", "").strip()
+                    job_id  = job.get("id", "")
+                    url     = job.get("externalLink", "") or f"https://jobs.ashbyhq.com/{slug}/{job_id}"
+                    loc_raw = job.get("location") or {}
+                    loc     = (loc_raw.get("name", "") if isinstance(loc_raw, dict) else str(loc_raw)).strip()
+                    posted  = (job.get("publishedAt") or "")[:10]
+                    if not _is_de_location(loc):
+                        continue
+                    _add(title, company_name, loc, url, posted, "ashby")
+            except Exception as e:
+                print(f"   [WARN] Ashby {slug}: {e}")
+
+    # ── Lever ───────────────────────────────────────────────────────────────
+    if lever_list:
+        print(f"\n>> Checking {len(lever_list)} Lever boards...")
+        for company_name, slug in lever_list:
+            try:
+                resp = requests.get(
+                    f"https://api.lever.co/v0/postings/{slug}?mode=json",
+                    headers=_HEADERS, timeout=10,
+                )
+                if resp.status_code != 200:
+                    continue
+                for job in resp.json():
+                    title  = job.get("text", "").strip()
+                    url    = job.get("hostedUrl", "").strip()
+                    cats   = job.get("categories", {})
+                    loc    = cats.get("location", "").strip()
+                    ts     = job.get("createdAt", 0)
+                    posted = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d") if ts else "—"
+                    desc   = job.get("descriptionPlain", "")[:500]
+                    if not _is_de_location(loc):
+                        continue
+                    _add(title, company_name, loc, url, posted, "lever", desc)
+            except Exception as e:
+                print(f"   [WARN] Lever {slug}: {e}")
 
     return results
 
@@ -335,7 +361,7 @@ def scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old: int = 7):
             for job in resp.json().get("stellenangebote", []):
                 pub = job.get("aktuelleVeroeffentlichungsdatum", "")
                 if pub and pub < cutoff:
-                    continue                # skip older than days_old
+                    continue
 
                 title   = job.get("titel", "").strip()
                 company = job.get("arbeitgeber", "").strip()
@@ -382,6 +408,166 @@ def scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old: int = 7):
         print(f"   + {len(results)} from Arbeitsagentur")
     return results
 
+
+# ── Arbeitnow (EU tech board — free public REST API) ───────────────────────
+
+def scrape_arbeitnow(profile, seen_urls, tracked_pairs):
+    """Arbeitnow public API — EU/Germany-focused, English-friendly tech jobs."""
+    results = []
+    print(f"\n>> Arbeitnow: fetching Germany tech jobs...")
+
+    for page in range(1, 4):
+        try:
+            resp = requests.get(
+                "https://www.arbeitnow.com/api/job-board-api",
+                params={"page": page},
+                headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"},
+                timeout=15,
+            )
+            if resp.status_code != 200:
+                break
+            jobs = resp.json().get("data", [])
+            if not jobs:
+                break
+
+            for job in jobs:
+                title   = job.get("title", "").strip()
+                company = job.get("company_name", "").strip()
+                url     = job.get("url", "").strip()
+                loc     = job.get("location", "").strip()
+                remote  = bool(job.get("remote", False))
+                created = job.get("created_at", 0)
+                if isinstance(created, int) and created:
+                    posted = datetime.fromtimestamp(created).strftime("%Y-%m-%d")
+                else:
+                    posted = str(created)[:10] if created else "—"
+                desc = job.get("description", "")[:500]
+
+                if not title or not company or not url:
+                    continue
+                if not _is_de_location(loc):
+                    continue
+                if is_excluded(title):
+                    continue
+
+                url_key = url.lower()
+                if url_key in seen_urls:
+                    continue
+                seen_urls.add(url_key)
+
+                pair = (company.lower(), normalize_title(title))
+                if pair in tracked_pairs:
+                    continue
+                tracked_pairs.add(pair)
+
+                score = score_job(title, desc, profile)
+                if score < 4:
+                    continue
+
+                results.append({
+                    "title":       title,
+                    "company":     company,
+                    "location":    loc or "Germany",
+                    "score":       score,
+                    "job_url":     url,
+                    "is_remote":   remote,
+                    "source":      "arbeitnow",
+                    "date_posted": posted,
+                })
+        except Exception as e:
+            print(f"   [WARN] Arbeitnow page {page}: {e}")
+            break
+
+    if results:
+        print(f"   + {len(results)} from Arbeitnow")
+    return results
+
+
+# ── StepStone RSS (jailbreak via public feed) ──────────────────────────────
+
+def scrape_stepstone_rss(profile, seen_urls, tracked_pairs):
+    """StepStone RSS feed — bypasses HTML scraping blocks. Silently skips if gated."""
+    results = []
+    search_terms = [
+        profile["target"]["primary_role"],
+        "Data Analytics Engineer",
+        "Analytics Engineer",
+        "Data Architect",
+    ]
+    print(f"\n>> StepStone RSS: trying {len(search_terms)} terms...")
+
+    _SS_NS = "http://www.stepstone.de/rss/"
+
+    for term in search_terms:
+        try:
+            resp = requests.get(
+                "https://www.stepstone.de/rss/stellenangebote.html",
+                params={"q": term, "where": "Deutschland", "rssid": "0"},
+                headers={"User-Agent": "Mozilla/5.0 (compatible; RSS/2.0)"},
+                timeout=15,
+            )
+            if resp.status_code != 200:
+                print(f"   [SKIP] StepStone RSS HTTP {resp.status_code} — feed may be gated")
+                break
+
+            root = ET.fromstring(resp.content)
+            channel = root.find("channel")
+            if channel is None:
+                continue
+
+            for item in channel.findall("item"):
+                title   = (item.findtext("title") or "").strip()
+                url     = (item.findtext("link") or "").strip()
+                co_el   = item.find(f"{{{_SS_NS}}}company")
+                company = co_el.text.strip() if (co_el is not None and co_el.text) else "Unknown"
+                loc_el  = item.find(f"{{{_SS_NS}}}location")
+                loc     = loc_el.text.strip() if (loc_el is not None and loc_el.text) else "Germany"
+                desc    = (item.findtext("description") or "")[:500]
+                pub     = (item.findtext("pubDate") or "")[:16]
+
+                if not title or not url:
+                    continue
+                if is_excluded(title):
+                    continue
+
+                url_key = url.lower()
+                if url_key in seen_urls:
+                    continue
+                seen_urls.add(url_key)
+
+                pair = (company.lower(), normalize_title(title))
+                if pair in tracked_pairs:
+                    continue
+                tracked_pairs.add(pair)
+
+                score = score_job(title, desc, profile)
+                if score < 4:
+                    continue
+
+                results.append({
+                    "title":       title,
+                    "company":     company,
+                    "location":    loc,
+                    "score":       score,
+                    "job_url":     url,
+                    "is_remote":   "remote" in title.lower() or "remote" in loc.lower(),
+                    "source":      "stepstone",
+                    "date_posted": pub or "—",
+                })
+
+        except ET.ParseError:
+            print(f"   [SKIP] StepStone RSS blocked / non-XML for '{term}' — feed may require login")
+            break
+        except Exception as e:
+            print(f"   [WARN] StepStone RSS '{term}': {e}")
+
+    if results:
+        print(f"   + {len(results)} from StepStone RSS")
+    else:
+        print(f"   [INFO] StepStone RSS: 0 results (blocked or feed gated — Google Jobs covers this)")
+    return results
+
+
 # ── main ───────────────────────────────────────────────────────────────────
 
 def main():
@@ -396,7 +582,7 @@ def main():
 
     print("Loading tracked jobs for dedup...")
     tracked_urls = load_tracked_urls()
-    session_pairs = set()   # within-run pair dedup only (catches same job on LinkedIn+Indeed)
+    session_pairs = set()
 
     search_terms = [
         profile["target"]["primary_role"],
@@ -415,14 +601,17 @@ def main():
     all_jobs = []
     seen_urls = set(tracked_urls)
 
+    # ── jobspy: LinkedIn + Indeed + Glassdoor + Google Jobs ─────────────────
+    # Google Jobs aggregates StepStone, XING, and hundreds of other sources —
+    # it is the most effective jailbreak for boards that block direct scraping.
     for term in search_terms:
         print(f"\n>> Searching: '{term}' in Germany...")
         try:
             df = scrape_jobs(
-                site_name=["linkedin", "indeed"],
+                site_name=["linkedin", "indeed", "google"],
                 search_term=term,
                 location="Germany",
-                results_wanted=25,
+                results_wanted=50,
                 country_indeed="Germany",
                 hours_old=hours_old,
                 linkedin_fetch_description=False,
@@ -445,38 +634,47 @@ def main():
                 if not title or not company:
                     continue
 
-                # dedup by URL (against history + current session)
                 url_key = url.lower()
                 if url_key in seen_urls:
                     continue
                 seen_urls.add(url_key)
 
-                # within-session pair dedup: catches same job on LinkedIn AND Indeed
                 pair = (company.lower(), normalize_title(title))
                 if pair in session_pairs:
                     continue
                 session_pairs.add(pair)
 
-                # exclude junior/intern
                 if is_excluded(title):
                     continue
 
-                # score
                 score = score_job(title, desc, profile)
                 if score < 4:
                     continue
 
                 posted = row.get("date_posted", None)
-                posted_str = str(posted) if posted and str(posted) != "NaT" and str(posted) != "None" else "—"
+                posted_str = str(posted) if posted and str(posted) not in ("NaT", "None") else "—"
+
+                # normalize site name so dashboard badges work
+                site = str(row.get("site", "")).lower()
+                if "linkedin" in site:
+                    source = "linkedin"
+                elif "indeed" in site:
+                    source = "indeed"
+                elif "glassdoor" in site:
+                    source = "glassdoor"
+                elif "google" in site:
+                    source = "google"
+                else:
+                    source = site
 
                 all_jobs.append({
-                    "title":      title,
-                    "company":    company,
-                    "location":   loc,
-                    "score":      score,
-                    "job_url":    url,
-                    "is_remote":  remote,
-                    "source":     str(row.get("site", "")),
+                    "title":       title,
+                    "company":     company,
+                    "location":    loc,
+                    "score":       score,
+                    "job_url":     url,
+                    "is_remote":   remote,
+                    "source":      source,
                     "date_posted": posted_str,
                 })
 
@@ -484,7 +682,7 @@ def main():
             print(f"   [WARN] Error scraping '{term}': {e}")
             continue
 
-    # ── company ATS boards (Greenhouse) ─────────────────────────────────────
+    # ── Company ATS boards (Greenhouse + Ashby + Lever) ─────────────────────
     board_jobs = scrape_company_boards(profile, seen_urls, session_pairs)
     if board_jobs:
         all_jobs.extend(board_jobs)
@@ -494,6 +692,14 @@ def main():
     ba_jobs = scrape_arbeitsagentur(profile, seen_urls, session_pairs, days_old=7)
     all_jobs.extend(ba_jobs)
 
+    # ── Arbeitnow (EU tech board) ─────────────────────────────────────────────
+    an_jobs = scrape_arbeitnow(profile, seen_urls, session_pairs)
+    all_jobs.extend(an_jobs)
+
+    # ── StepStone RSS (jailbreak attempt) ────────────────────────────────────
+    ss_jobs = scrape_stepstone_rss(profile, seen_urls, session_pairs)
+    all_jobs.extend(ss_jobs)
+
     # sort by score desc
     all_jobs.sort(key=lambda x: x["score"], reverse=True)
 
@@ -501,12 +707,11 @@ def main():
     print(f"SCRAPE COMPLETE — {len(all_jobs)} new matching jobs found")
     print(f"{'='*60}\n")
 
-    # always save run state so dashboard knows what's current
     state = {
-        "date": date.today().isoformat(),
+        "date":      date.today().isoformat(),
         "timestamp": datetime.now().isoformat(),
-        "count": len(all_jobs),
-        "urls": [j["job_url"] for j in all_jobs],
+        "count":     len(all_jobs),
+        "urls":      [j["job_url"] for j in all_jobs],
     }
     LAST_RUN_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
@@ -514,7 +719,6 @@ def main():
         print("No new matches found. All results were filtered or already tracked.")
         return
 
-    # print table — encode to ASCII with replacement to survive narrow Windows terminals
     def _p(s: str, width: int) -> str:
         return s[:width].encode("ascii", errors="replace").decode("ascii")
 

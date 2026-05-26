@@ -99,9 +99,13 @@ def escape(s):
 def js_array(jobs):
     rows = []
     for i, j in enumerate(jobs, 1):
-        src = ("linkedin" if "linkedin" in j["source"]
-               else "indeed" if "indeed" in j["source"]
-               else j["source"])
+        s = j["source"].lower()
+        src = ("linkedin"      if "linkedin"      in s
+               else "indeed"   if "indeed"        in s
+               else "glassdoor" if "glassdoor"    in s
+               else "google"   if "google"        in s
+               else "stepstone" if "stepstone"    in s
+               else s)
         rows.append(
             "  {" +
             f"n:{i}," +
@@ -178,6 +182,9 @@ def generate_html(jobs, run_info):
     .br{{background:#e6f4ea;color:#137333}}.bo{{background:#f1f3f4;color:#666}}
     .bli{{background:#dbeafe;color:#1d4ed8}}.bin{{background:#fef3c7;color:#92400e}}
     .bgr{{background:#f3e8ff;color:#6b21a8}}.bba{{background:#fce7f3;color:#9d174d}}
+    .bgl{{background:#d1fae5;color:#065f46}}.bgo{{background:#fef9c3;color:#713f12}}
+    .bss{{background:#ffe4e6;color:#9f1239}}.blv{{background:#ede9fe;color:#5b21b6}}
+    .ban{{background:#e0f2fe;color:#0369a1}}
     .posted{{font-size:11px;color:#888;white-space:nowrap}}
     .location{{color:#555;font-size:12px;max-width:160px}}
     .btn-apply{{display:inline-block;padding:5px 13px;background:#1a73e8;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-right:4px;transition:background .15s;white-space:nowrap}}
@@ -185,7 +192,13 @@ def generate_html(jobs, run_info):
     .btn-apply.linkedin{{background:#0a66c2}}.btn-apply.linkedin:hover{{background:#084e96}}
     .btn-apply.indeed{{background:#2164f3}}.btn-apply.indeed:hover{{background:#1a4fcf}}
     .btn-apply.greenhouse{{background:#6b21a8}}.btn-apply.greenhouse:hover{{background:#581c87}}
+    .btn-apply.ashby{{background:#5b21b6}}.btn-apply.ashby:hover{{background:#4c1d95}}
+    .btn-apply.lever{{background:#5b21b6}}.btn-apply.lever:hover{{background:#4c1d95}}
     .btn-apply.arbeitsagentur{{background:#9d174d}}.btn-apply.arbeitsagentur:hover{{background:#831843}}
+    .btn-apply.arbeitnow{{background:#0369a1}}.btn-apply.arbeitnow:hover{{background:#075985}}
+    .btn-apply.stepstone{{background:#9f1239}}.btn-apply.stepstone:hover{{background:#881337}}
+    .btn-apply.google{{background:#1a73e8}}.btn-apply.google:hover{{background:#1557b0}}
+    .btn-apply.glassdoor{{background:#065f46}}.btn-apply.glassdoor:hover{{background:#064e3b}}
     .btn-done{{padding:5px 10px;border:1px solid #ccc;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#555;white-space:nowrap;transition:all .15s}}
     .btn-done:hover{{background:#fef3c7;border-color:#e3a008;color:#92400e}}
     .btn-done.applied{{background:#e6f4ea;border-color:#137333;color:#137333}}
@@ -229,8 +242,14 @@ def generate_html(jobs, run_info):
     <option value="all">All sources</option>
     <option value="linkedin">LinkedIn</option>
     <option value="indeed">Indeed</option>
+    <option value="glassdoor">Glassdoor</option>
+    <option value="google">Google Jobs</option>
     <option value="greenhouse">Greenhouse</option>
+    <option value="ashby">Ashby</option>
+    <option value="lever">Lever</option>
     <option value="arbeitsagentur">Arbeitsagentur</option>
+    <option value="arbeitnow">Arbeitnow</option>
+    <option value="stepstone">StepStone</option>
   </select>
   <select id="filter-new">
     <option value="all">All jobs</option>
@@ -294,10 +313,16 @@ function scoreClass(s) {{
 }}
 
 function srcBadge(s) {{
-  if (s==="linkedin") return ["bli","LinkedIn"];
-  if (s==="indeed")   return ["bin","Indeed"];
-  if (s==="greenhouse") return ["bgr","Greenhouse"];
+  if (s==="linkedin")      return ["bli","LinkedIn"];
+  if (s==="indeed")        return ["bin","Indeed"];
+  if (s==="glassdoor")     return ["bgl","Glassdoor"];
+  if (s==="google")        return ["bgo","Google Jobs"];
+  if (s==="greenhouse")    return ["bgr","Greenhouse"];
+  if (s==="ashby")         return ["blv","Ashby"];
+  if (s==="lever")         return ["blv","Lever"];
   if (s==="arbeitsagentur") return ["bba","Arbeit"];
+  if (s==="arbeitnow")     return ["ban","Arbeitnow"];
+  if (s==="stepstone")     return ["bss","StepStone"];
   return ["bo", s];
 }}
 
