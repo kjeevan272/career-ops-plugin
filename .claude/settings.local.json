@@ -19,7 +19,14 @@
       "PowerShell(python --version; python -c \"import jobspy; print\\('jobspy OK'\\)\" 2>&1; python -c \"import yaml, requests; print\\('deps OK'\\)\" 2>&1)",
       "PowerShell(python scripts/scrape_jobs.py)",
       "PowerShell(python scripts/generate_dashboard.py)",
-      "Skill(code-review)"
+      "Skill(code-review)",
+      "WebSearch",
+      "Bash(python3 scripts/scrape_jobs.py --help)",
+      "Bash(pip3 install *)",
+      "Bash(pip3 --version)",
+      "Bash(python3 -c \"import sys; print\\(sys.prefix\\)\")",
+      "Read(//usr/local/lib/python3.14/site-packages/**)",
+      "Bash(python3 *)"
     ]
   }
 }
