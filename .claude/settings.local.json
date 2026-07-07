@@ -18,7 +18,8 @@
       "Read(//tmp/**)",
       "PowerShell(python --version; python -c \"import jobspy; print\\('jobspy OK'\\)\" 2>&1; python -c \"import yaml, requests; print\\('deps OK'\\)\" 2>&1)",
       "PowerShell(python scripts/scrape_jobs.py)",
-      "PowerShell(python scripts/generate_dashboard.py)"
+      "PowerShell(python scripts/generate_dashboard.py)",
+      "Skill(code-review)"
     ]
   }
 }
