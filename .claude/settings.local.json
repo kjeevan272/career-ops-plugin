@@ -13,7 +13,12 @@
       "Bash(git commit *)",
       "Bash(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-AnalyticsEngineer.html\")",
       "Bash(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-CoverLetter.html\")",
-      "PowerShell(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-AnalyticsEngineer.html\"; Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-CoverLetter.html\")"
+      "PowerShell(Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-AnalyticsEngineer.html\"; Start-Process \"C:\\\\Users\\\\91973\\\\career-ops-plugin\\\\data\\\\resumes\\\\Jeevan-Kondasingu-HamburgerEnergieNetze-CoverLetter.html\")",
+      "Bash(python -u -c ' *)",
+      "Read(//tmp/**)",
+      "PowerShell(python --version; python -c \"import jobspy; print\\('jobspy OK'\\)\" 2>&1; python -c \"import yaml, requests; print\\('deps OK'\\)\" 2>&1)",
+      "PowerShell(python scripts/scrape_jobs.py)",
+      "PowerShell(python scripts/generate_dashboard.py)"
     ]
   }
 }
