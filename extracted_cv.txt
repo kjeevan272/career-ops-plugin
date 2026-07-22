@@ -3,16 +3,16 @@ Senior Data Engineer | AWS · Snowflake · Databricks · PySpark
 Munich, Germany | +49 152 5587 9826 | kjeevan272@gmail.com
 LinkedIn: linkedin.com/in/kjeevan272 | GitHub: github.com/kjeevan272
 PROFESSIONAL SUMMARY
-Senior Data Engineer with 8+ years of experience designing, building, and optimising scalable data platforms across Retail, E-Commerce, Insurance, Real Estate, and Predictive Analytics. Specialised in AWS-native data architectures (Glue, Redshift, S3, EMR, Kinesis, DMS), PySpark, Snowflake, Databricks, and Apache Kafka, with proven delivery in multi-cloud environments (AWS, Azure, GCP) and agile, cross-functional teams.
+Senior Data Engineer with 9+ years of experience designing, building, and optimising scalable data platforms across Retail, E-Commerce, Insurance, Real Estate, and Predictive Analytics. Specialised in AWS-native data architectures (Glue, Redshift, S3, EMR, Kinesis, DMS), PySpark, Snowflake, Databricks, and Apache Kafka, with proven delivery in multi-cloud environments (AWS, Azure, GCP) and agile, cross-functional teams.
 Owned end-to-end architecture and delivery of Data Lake, Lakehouse, and Data Warehouse solutions with measurable outcomes: 40% reduction in pipeline processing time, terabyte-scale Spark workloads, streaming pipelines processing > 50M events/day, and GDPR/HIPAA-compliant data quality frameworks. Experienced in technical leadership, mentoring engineers, and stakeholder management with global clients.
 CORE COMPETENCIES
 Cloud & Infrastructure: AWS (Glue, S3, Redshift, EMR, Kinesis, DMS, Lambda, Step Functions, Athena, CloudWatch, IAM, KMS, Lake Formation, CodePipeline) · Azure (ADF, Databricks, AKS, DevOps) · GCP
-Big Data & Processing: Apache Spark, PySpark, Apache Kafka, Apache Flink, Apache Airflow (MWAA), Databricks, Amazon EMR, Hadoop, HDFS
+Big Data & Processing: Apache Spark, PySpark, Apache Kafka, Apache Flink, Apache Airflow (MWAA), Databricks (Workflows, Auto Loader, Delta Live Tables, Unity Catalog), Amazon EMR, Hadoop, HDFS
 Data Warehouses & Databases: Snowflake, Amazon Redshift, PostgreSQL, Oracle, SQL Server, MySQL, DynamoDB, Delta Lake, Apache Iceberg
 ETL & Data Integration: AWS Glue, AWS DMS, dbt, SSIS, Salesforce Bulk/REST/Streaming API, AppFlow, CDC patterns, Great Expectations
 Programming: Python, SQL, Spark SQL, PySpark, Bash/Linux, YAML
-Data Modelling: Star Schema, Snowflake Schema, Dimensional Modelling, MDM, Data Vault (basics)
-DevOps & Governance: Git, GitHub Actions, GitLab CI, CI/CD, Terraform (IaC), Docker, GDPR-compliant pipelines, SOX, RBAC
+Data Modelling: Star Schema, Snowflake Schema, Dimensional Modelling, Medallion Architecture (Bronze/Silver/Gold), Data Products, MDM, Data Vault
+DevOps & Governance: Git, GitHub Actions, GitLab CI, CI/CD, Terraform (IaC), Docker, Kubernetes (K8s), GDPR-compliant pipelines, SOX, RBAC
 BI & Visualisation: Power BI, Amazon QuickSight, Tableau, Pandas, Matplotlib, Seaborn
 ML/AI Foundations: scikit-learn, TensorFlow (integrated in data pipelines), Predictive Analytics, KNN, SVM, Random Forest
 Methodology: Agile/Scrum, TDD, Code Reviews, Technical Mentoring, Stakeholder Management
@@ -35,17 +35,17 @@ Built materialised views to serve BI teams for demand planning, trend analysis, 
 Automated workflows with AWS Step Functions, Lambda, and Glue Workflows; monitoring via CloudWatch and Snowflake Query History.
 E-Commerce / Online Retail — Enterprise Data Warehouse for E-Commerce BI
 Led the build of serverless ETL pipelines with AWS Glue Jobs, Glue Data Catalog, and PySpark for batch and incremental integration of heterogeneous sources, processing > 200M records per day.
-Designed and tuned PySpark workloads (partitioning, schema evolution, complex aggregations, Spark SQL) on terabyte-scale datasets — reduced cluster costs by approximately 25%.
+Designed and tuned PySpark workloads (partitioning, schema evolution, idempotent processing, complex aggregations, Spark SQL) on terabyte-scale datasets — reduced cluster costs by approximately 25%.
 Established MDM principles to maintain a single source of truth across 6+ enterprise datasets.
 Built a data quality framework (validation, cleansing, standardisation) in Glue/PySpark, achieving > 99% data quality score.
 Designed Star and Snowflake schemas in Redshift and developed views and stored procedures for the semantic layer.
 Integrated external file formats (CSV, JSON, SFTP, SharePoint) into Redshift and PostgreSQL via AppFlow, Lambda functions, and EventBridge triggers.
 Insurance / Insurance Analytics — Real-Time Data Platform with Databricks, EMR & Glue
 Architected and operated an end-to-end real-time data pipeline using AWS Databricks, AWS Glue, and Amazon EMR for insurance telemetry and claims data.
-Ingested raw data from Kinesis and S3 into the Raw Layer and developed custom PySpark ETL jobs for Parquet/Delta output.
+Ingested raw data from Kinesis and S3 into the Bronze Layer (Medallion Architecture) and developed custom PySpark ETL jobs for Parquet/Delta output.
 Implemented Change Data Capture (CDC) for incremental loads with guaranteed consistency between source and destination systems.
 Tuned Spark jobs on EMR clusters (data skew, partitioning, resource allocation) — reduced processing time by approximately 35% and significantly cut infrastructure costs.
-Delivered CI/CD pipelines for Databricks notebooks via GitHub Actions and AWS CodePipeline.
+Orchestrated end-to-end pipeline scheduling using Databricks Workflows; delivered CI/CD for Databricks notebooks via GitHub Actions and AWS CodePipeline.
 Led a team of 4 junior engineers, conducted code reviews and trainings on Spark transformations and Glue job optimisation.
 IT Services / Streaming Analytics — Real-Time Streaming Pipeline with Kafka, Kinesis & Spark/Flink
 Designed and implemented a Kafka-based real-time ingestion pipeline handling > 50M events per day at sub-second latency.
@@ -59,9 +59,9 @@ Implemented CDC with AWS DMS for near-real-time replication.
 Tuned Redshift performance via distribution keys, sort keys, and vacuum operations.
 Automated workflows with AWS Step Functions and Lambda.
 IT Services / Data Platform — Scalable Data Lakehouse on AWS S3, Lake Formation & ADLS
-Architected a Data Lakehouse solution with Delta Lake and Apache Iceberg for ACID-compliant analytical workloads.
+Architected a Data Lakehouse solution with Delta Lake and Apache Iceberg following Medallion Architecture (Bronze/Silver/Gold layers) for ACID-compliant, scalable analytical workloads.
 Defined partitioning and file format strategies (Parquet, ORC, Avro) to maximise performance.
-Enabled schema evolution and data cataloguing through AWS Glue Data Catalog.
+Enabled schema evolution, data lineage tracking, and cataloguing through AWS Glue Data Catalog.
 Implemented RBAC and security policies via AWS IAM and KMS.
 Optimised query performance with Athena, Presto, and Redshift Spectrum.
 IT Services / Orchestration — ETL Orchestration with Apache Airflow / MWAA

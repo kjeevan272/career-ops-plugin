@@ -26,7 +26,16 @@
       "Bash(pip3 --version)",
       "Bash(python3 -c \"import sys; print\\(sys.prefix\\)\")",
       "Read(//usr/local/lib/python3.14/site-packages/**)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(python3.11 -m venv /Users/user/career-ops-plugin/.venv)",
+      "Bash(/Users/user/career-ops-plugin/.venv/bin/pip install *)",
+      "Bash(/Users/user/career-ops-plugin/.venv/bin/python *)",
+      "Bash(date *)",
+      "Bash(awk -F'|' 'NR>3 {print $11}' /Users/user/career-ops-plugin/data/pipeline.md)",
+      "Bash(.venv/bin/python scripts/generate_dashboard.py --since=2026-07-20)",
+      "Bash(mkdir -p /Users/user/.claude/jobs/a1126721/tmp)",
+      "Bash(unzip -o -q data/Etengo_Profil-Template_EN.docx -d /Users/user/.claude/jobs/a1126721/tmp/etengo_extract)",
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\"; head -5 \"{}\" | grep -i lang; grep -o \"Work Author[^<]*\" \"{}\" | head -1')"
     ]
   }
 }

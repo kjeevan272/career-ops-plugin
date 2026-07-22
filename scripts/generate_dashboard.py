@@ -415,9 +415,18 @@ applyFilters();
 
 
 def main():
+    since = None
+    for arg in sys.argv[1:]:
+        if arg.startswith("--since="):
+            since = arg.split("=", 1)[1]
+
     print("Parsing pipeline.md...")
     jobs = parse_pipeline()
     print(f"Found {len(jobs)} jobs total")
+
+    if since:
+        jobs = [j for j in jobs if j["date_found"] >= since]
+        print(f"Filtered to jobs found on/after {since}: {len(jobs)}")
 
     run_info = load_last_run()
 
