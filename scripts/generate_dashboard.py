@@ -1,7 +1,11 @@
 """
 Generate data/pipeline-dashboard.html from data/pipeline.md
-Defaults to showing only the latest scrape run (URL-matched, no date filter).
+Defaults to showing ONLY the new roles from the latest scrape run (URL-matched
+against data/.last-run.json), sorted by date found descending.
 Run: python scripts/generate_dashboard.py
+Flags:
+  --all           show the full historical pipeline instead of new-only
+  --since=YYYY-MM-DD   show jobs found on/after this date
 """
 
 import json
@@ -415,10 +419,13 @@ applyFilters();
 
 
 def main():
-    since = None
+    since   = None
+    show_all = False
     for arg in sys.argv[1:]:
         if arg.startswith("--since="):
             since = arg.split("=", 1)[1]
+        elif arg == "--all":
+            show_all = True
 
     print("Parsing pipeline.md...")
     jobs = parse_pipeline()
@@ -441,8 +448,13 @@ def main():
         for j in jobs:
             j["is_new"] = j["date_found"] == today
 
-    new_count = sum(1 for j in jobs if j["is_new"])
-    print(f"Latest run jobs showing: {new_count}")
+    # Default: dashboard shows only the latest run's new roles, newest first.
+    # Pass --all to render the full historical pipeline instead.
+    if not show_all and not since:
+        jobs = [j for j in jobs if j["is_new"]]
+        print(f"Showing new roles only from the latest run: {len(jobs)}")
+
+    jobs.sort(key=lambda j: j["date_found"], reverse=True)
 
     html = generate_html(jobs, run_info)
     OUTPUT_PATH.write_text(html, encoding="utf-8")
