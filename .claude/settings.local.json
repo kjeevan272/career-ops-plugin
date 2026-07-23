@@ -35,7 +35,16 @@
       "Bash(.venv/bin/python scripts/generate_dashboard.py --since=2026-07-20)",
       "Bash(mkdir -p /Users/user/.claude/jobs/a1126721/tmp)",
       "Bash(unzip -o -q data/Etengo_Profil-Template_EN.docx -d /Users/user/.claude/jobs/a1126721/tmp/etengo_extract)",
-      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\"; head -5 \"{}\" | grep -i lang; grep -o \"Work Author[^<]*\" \"{}\" | head -1')"
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\"; head -5 \"{}\" | grep -i lang; grep -o \"Work Author[^<]*\" \"{}\" | head -1')",
+      "Bash(mkdir -p /Users/user/.claude/jobs/299b607f/tmp)",
+      "Bash(echo \"test\")",
+      "Bash(rm data/resumes/.write-test-probe.txt)",
+      "Artifact",
+      "Bash(printf '| 2026-07-22 | | Statista \\(Hamburg/Remote\\) | Data Engineer - Data Access & Distribution Layer | — | Ready to Apply | — | [Resume]\\(resumes/Jeevan-Kondasingu-Statista-DataEngineer-DataAccessDistribution.html\\) · [Cover Letter]\\(cover-letters/Jeevan-Kondasingu-Statista-DataEngineer-DataAccessDistribution-CoverLetter.html\\) | Strong Kafka/schema-evolution/Avro/Snowflake/dbt/CI-CD match; JD leads with \"backend services in Python\" which is a real stretch from pipeline/ETL background — stated honestly as a growth area, not hidden; genuinely uses Claude Code daily so the AI-assisted-workflow ask is authentic |\\\\n')",
+      "Bash(printf '| 2026-07-22 | | \\(company not provided\\) | Data Platform Engineer | — | Ready to Apply | — | [Resume]\\(resumes/Jeevan-Kondasingu-DataPlatformEngineer-EventDrivenPipelines.html\\) · [Cover Letter]\\(cover-letters/Jeevan-Kondasingu-DataPlatformEngineer-EventDrivenPipelines-CoverLetter.html\\) | Strong match: Python/Airflow/Kafka/migration-leadership/Datadog-CloudWatch observability/storage-selection; no Dagster or PHP/Laravel experience — both stated honestly, Dagster framed as Airflow-transferable, PHP flagged as a hard gap if truly required; cover letter recipient left as placeholder pending company name |\\\\n')",
+      "Bash(mv \"data/resumes/Jeevan-Kondasingu-DataPlatformEngineer-EventDrivenPipelines.html\" \"data/resumes/Jeevan-Kondasingu-plusYOU-StaffDataEngineer.html\")",
+      "Bash(mv \"data/cover-letters/Jeevan-Kondasingu-DataPlatformEngineer-EventDrivenPipelines-CoverLetter.html\" \"data/cover-letters/Jeevan-Kondasingu-plusYOU-StaffDataEngineer-CoverLetter.html\")",
+      "Bash(xargs -I{} cat {})"
     ]
   }
 }
