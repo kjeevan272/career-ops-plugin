@@ -13,16 +13,20 @@ English-only: applied wherever a source provides description text (LinkedIn,
         Bundesagentur's list API returns no description text, so it isn't
         filtered — see its docstring.
 
-Modes (mutually exclusive; plain run with no flag = daily/default):
+Modes (mutually exclusive; plain run with no flag = full/default):
   --quick   Fast single-term LinkedIn/EU-only pass. For a quick daily check.
             (Formerly a separate script, scrape_linkedin_europe.py — folded
             in here so there's one scraper instead of two making overlapping
             LinkedIn/EU calls back to back.)
-  --full    Full multi-source run: adds Indeed/Google/Glassdoor per country
-            on top of the daily LinkedIn/EU + ATS boards + Arbeitsagentur +
-            Arbeitnow + StepStone passes.
-  (none)    Daily mode: LinkedIn/EU + ATS boards + Arbeitsagentur + Arbeitnow
-            + StepStone.
+  --daily   LinkedIn/EU + ATS boards + Arbeitsagentur + Arbeitnow + StepStone
+            only — skips the slower Indeed/Google/Glassdoor per-country pass.
+  (none)    Full mode (default): everything in --daily, PLUS Indeed/Google/
+            Glassdoor per target country. Google Jobs in particular
+            aggregates many boards direct scraping can't reach, so this is
+            the default despite being slower (~3-6 min extra) — an
+            automated run costs you nothing to wait on, and narrower
+            coverage means missed roles. --full is still accepted as an
+            explicit alias for this default.
 """
 
 import sys
@@ -216,22 +220,49 @@ _STRICT_TITLE_PATTERNS = (
     "cloud architect", "platform engineer", "data platform",
 )
 
+# Generic engineering titles that DON'T name a data role at all — e.g. a
+# "Backend Developer" job that's mostly API/service work but happens to
+# mention building data pipelines. Real example: an ALTEN "Senior Python
+# Backend Developer" posting missed entirely because the title carries no
+# data-role signal. These are let through ONLY if the description shows a
+# real concentration of data-engineering skill keywords (see
+# _GENERIC_TITLE_MIN_SKILL_MATCHES below) — otherwise this would flood
+# results with ordinary backend/software roles that have nothing to do with
+# data work. Expect these to score lower than a genuine data-titled role
+# (no title-family bonus below), which is intentional — they're a "maybe,
+# worth a look" tier, not a confirmed strong match.
+_GENERIC_TITLE_PATTERNS = (
+    "backend developer", "backend engineer", "software engineer",
+    "software developer", "api developer", "python developer",
+    "devops engineer", "site reliability engineer",
+)
+_GENERIC_TITLE_MIN_SKILL_MATCHES = 3
+
 def score_job(title: str, description: str, profile: dict) -> int:
     title_lc = title.lower()
     text = (title + " " + (description or "")).lower()
     score = 0
-    if not any(p in title_lc for p in _STRICT_TITLE_PATTERNS):
+
+    strict_match = any(p in title_lc for p in _STRICT_TITLE_PATTERNS)
+    generic_match = not strict_match and any(p in title_lc for p in _GENERIC_TITLE_PATTERNS)
+    if not strict_match and not generic_match:
         return 0
-    target_roles = [profile["target"]["primary_role"]] + profile["target"].get("secondary_roles", [])
-    for role in target_roles:
-        if role.lower() in title_lc:
-            score += 3
-            break
-    if any(p in title_lc for p in ("data engineer", "analytics engineer", "data scientist",
-                                    "data analyst", "bi developer", "bi engineer", "bi analyst",
-                                    "business intelligence")):
-        score += 1
+
     matched = sum(1 for kw in SKILL_KEYWORDS if kw in text)
+    if generic_match and matched < _GENERIC_TITLE_MIN_SKILL_MATCHES:
+        return 0
+
+    if strict_match:
+        target_roles = [profile["target"]["primary_role"]] + profile["target"].get("secondary_roles", [])
+        for role in target_roles:
+            if role.lower() in title_lc:
+                score += 3
+                break
+        if any(p in title_lc for p in ("data engineer", "analytics engineer", "data scientist",
+                                        "data analyst", "bi developer", "bi engineer", "bi analyst",
+                                        "business intelligence")):
+            score += 1
+
     score += min(4, matched // 2)
     seniority_words = ["senior", "lead", "principal", "staff", "head of", "sr."]
     if any(w in title.lower() for w in seniority_words):
@@ -798,10 +829,16 @@ def scrape_stepstone_rss(profile, seen_urls, tracked_pairs):
 
 def main():
     hours_old = 24
-    full_run  = "--full" in sys.argv
     quick_run = "--quick" in sys.argv
+    daily_only = "--daily" in sys.argv
+    # Full multi-source coverage is the default now (was opt-in via --full) —
+    # narrower coverage means missed roles, and an automated run costs
+    # nothing extra to wait a few more minutes on. --full is still accepted
+    # as an explicit no-op alias for this default. --daily opts back into
+    # the old faster-but-narrower behavior.
+    full_run = not quick_run and not daily_only
     for arg in sys.argv[1:]:
-        if arg in ("--full", "--quick"):
+        if arg in ("--full", "--quick", "--daily"):
             continue
         try:
             hours_old = int(arg)
@@ -810,7 +847,7 @@ def main():
     if quick_run:
         mode = "quick (LinkedIn/EU only, single term, English descriptions only)"
     elif full_run:
-        mode = "full"
+        mode = "full (default)"
     else:
         mode = "daily (LinkedIn-only for the main jobspy pass)"
     print(f"Loading profile... (hours_old={hours_old}, mode={mode})")
