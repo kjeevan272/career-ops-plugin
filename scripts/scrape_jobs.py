@@ -3,6 +3,26 @@ Job scraper for career-ops-plugin.
 Sources: LinkedIn · Indeed · Glassdoor · Google Jobs (via jobspy)
          Greenhouse · Ashby · Lever (ATS direct APIs)
          Bundesagentur für Arbeit · Arbeitnow · StepStone RSS
+Countries: set via profile.yml target.search_countries (default: ["Germany"]).
+           Bundesagentur/StepStone are Germany-only regardless of this list.
+Titles: data engineering, analytics/BI, data science, and data-focused
+        architecture/cloud/platform roles (see _STRICT_TITLE_PATTERNS) —
+        matches the same breadth as scrape_company_careers.py.
+English-only: applied wherever a source provides description text (LinkedIn,
+        Indeed/Google/Glassdoor, Greenhouse/Ashby/Lever, Arbeitnow, StepStone).
+        Bundesagentur's list API returns no description text, so it isn't
+        filtered — see its docstring.
+
+Modes (mutually exclusive; plain run with no flag = daily/default):
+  --quick   Fast single-term LinkedIn/EU-only pass. For a quick daily check.
+            (Formerly a separate script, scrape_linkedin_europe.py — folded
+            in here so there's one scraper instead of two making overlapping
+            LinkedIn/EU calls back to back.)
+  --full    Full multi-source run: adds Indeed/Google/Glassdoor per country
+            on top of the daily LinkedIn/EU + ATS boards + Arbeitsagentur +
+            Arbeitnow + StepStone passes.
+  (none)    Daily mode: LinkedIn/EU + ATS boards + Arbeitsagentur + Arbeitnow
+            + StepStone.
 """
 
 import sys
@@ -13,6 +33,7 @@ import xml.etree.ElementTree as ET
 import yaml
 import warnings
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -30,6 +51,31 @@ CAREERS_CSV    = ROOT / "data" / "workinglinks.csv"
 def load_profile():
     with open(PROFILE_PATH, encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def patch_jobspy_country_parsing():
+    """
+    jobspy's LinkedIn scraper crashes the ENTIRE multi-page fetch (not just
+    skips one job) if any single result's displayed location contains a
+    territory outside its own Country enum — e.g. "Isle of Man", "Jersey",
+    "Vatican City". This only surfaces when searching broadly (e.g.
+    location="European Union") rather than one of jobspy's known single-country
+    strings, since a broad search naturally turns up small territories jobspy
+    doesn't recognize. Patches Country.from_string to fall back to the raw
+    string instead of raising, so one exotic location doesn't take down the
+    whole run. Call once, after `from jobspy import scrape_jobs`, before any
+    broad-location (non-single-country) call.
+    """
+    from jobspy.model import Country
+    original = Country.from_string.__func__
+
+    def _safe_from_string(cls, country_str):
+        try:
+            return original(cls, country_str)
+        except ValueError:
+            return country_str
+
+    Country.from_string = classmethod(_safe_from_string)
 
 # ── dedup ──────────────────────────────────────────────────────────────────
 
@@ -51,6 +97,34 @@ def load_tracked_urls():
                 urls.add(url.strip("()").lower())
     return urls
 
+def load_tracked_pairs():
+    """Collect (company, normalized title) pairs already in pipeline.md and
+    applications.md. URL-only dedup (load_tracked_urls) misses the same job
+    posted under different URLs on different platforms — e.g. found via
+    LinkedIn last run, then the same role turns up via Indeed, a company's
+    own Greenhouse board, or the company-crawl scraper today. Matching on
+    (company, title) instead catches that regardless of which platform or
+    scraper found it, or which run it was first seen in."""
+    pairs = set()
+    for path in [APPS_PATH, PIPELINE_PATH]:
+        if not path.exists():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.startswith("|") or line.startswith("| Date") or line.startswith("|---"):
+                continue
+            cols = [c.strip() for c in line.strip("|").split("|")]
+            if len(cols) < 4:
+                continue
+            company = cols[2]
+            # pipeline.md's 10-column format can have literal "|" inside the
+            # role (e.g. "(w|m|d)"), which fragments a naive split — anchor
+            # from the end the same way generate_dashboard.py does.
+            role = "|".join(cols[3:-6]).strip() if len(cols) >= 10 else cols[3]
+            if not company or company.lower() in ("company", "---"):
+                continue
+            pairs.add((company.lower(), normalize_title(role)))
+    return pairs
+
 # ── scoring ────────────────────────────────────────────────────────────────
 
 SKILL_KEYWORDS = [
@@ -59,31 +133,73 @@ SKILL_KEYWORDS = [
     "delta lake", "iceberg", "bigquery", "etl", "elt", "data lake",
     "lakehouse", "data warehouse", "streaming", "flink", "cdc",
     "data engineer", "analytics engineer", "data architect",
-    "great expectations", "azure", "gcp", "terraform"
+    "great expectations", "azure", "gcp", "terraform",
+    # analytics / BI / data science terms — added when title scope widened
+    # to cover Data Analyst / Data Scientist / BI roles, so those titles can
+    # actually score against the candidate's real listed skills (Tableau,
+    # Power BI are in profile.yml) instead of always scoring near 0.
+    "tableau", "power bi", "looker", "qlik", "machine learning",
+    "data analytics", "business intelligence",
 ]
 
 EXCLUDE_KEYWORDS = [
     "junior", "intern", "internship", "trainee", "werkstudent",
-    "student", "apprentice", "graduate program", "entry level"
+    "student", "apprentice", "graduate program", "entry level",
+    # Adjacent-but-wrong roles — not data roles at all, unlike Data Analyst /
+    # Data Scientist / BI (which ARE in _STRICT_TITLE_PATTERNS below, matching
+    # scrape_company_careers.py's broader data-role coverage). Deliberately
+    # NOT excluding "marketing"/"sales"/etc as bare words — those are business
+    # domains a real Data Engineer role can be scoped to (e.g. "Data Engineer -
+    # Marketing & Communication" is a real data engineering role), and NOT
+    # excluding "engineering manager" since EM-for-a-data-platform is a role
+    # this candidate has genuinely pursued before.
+    "business analyst",
+    "operations analyst", "reporting analyst", "research scientist",
+    "product owner", "product manager", "project manager",
+    "program manager", "delivery manager",
+    "account manager", "recruiter", "talent acquisition",
+    "hr business partner",
 ]
 
-_TITLE_MUST_HAVE = {
-    "data", "analytics", "analytic", "lakehouse", "warehouse",
-    "etl", "elt", "dbt", "snowflake", "pipeline", "dataops",
-}
+# Title must contain an actual data-role-shaped phrase — not just the word
+# "data" or "analytics" on its own, which used to let Product Owner-type
+# roles through as long as "data" appeared anywhere in the title. Mirrors
+# scrape_company_careers.py's DATA_ENGINEER_TERMS so both scrapers cover the
+# same breadth of data roles: engineering, analytics, BI, data science,
+# architecture, and data-focused cloud/platform roles.
+_STRICT_TITLE_PATTERNS = (
+    # data engineering
+    "data engineer", "dataengineer", "etl engineer", "etl developer",
+    "big data engineer", "data platform engineer", "platform data engineer",
+    "data infrastructure engineer", "database engineer",
+    "lead data engineer", "senior data engineer", "principal data engineer",
+    "staff data engineer",
+    # analytics / BI
+    "analytics engineer", "data analyst", "data analytics",
+    "bi developer", "bi engineer", "bi analyst",
+    "business intelligence engineer", "business intelligence developer",
+    "business intelligence analyst",
+    # data science
+    "data scientist",
+    # architecture / data-focused cloud & platform
+    "data architect", "cloud data engineer", "cloud platform engineer",
+    "cloud architect", "platform engineer", "data platform",
+)
 
 def score_job(title: str, description: str, profile: dict) -> int:
     title_lc = title.lower()
     text = (title + " " + (description or "")).lower()
     score = 0
-    if not any(kw in title_lc for kw in _TITLE_MUST_HAVE):
+    if not any(p in title_lc for p in _STRICT_TITLE_PATTERNS):
         return 0
     target_roles = [profile["target"]["primary_role"]] + profile["target"].get("secondary_roles", [])
     for role in target_roles:
         if role.lower() in title_lc:
             score += 3
             break
-    if "data engineer" in title_lc or "analytics engineer" in title_lc:
+    if any(p in title_lc for p in ("data engineer", "analytics engineer", "data scientist",
+                                    "data analyst", "bi developer", "bi engineer", "bi analyst",
+                                    "business intelligence")):
         score += 1
     matched = sum(1 for kw in SKILL_KEYWORDS if kw in text)
     score += min(4, matched // 2)
@@ -96,6 +212,22 @@ def score_job(title: str, description: str, profile: dict) -> int:
 
 def is_excluded(title: str) -> bool:
     return any(kw in title.lower() for kw in EXCLUDE_KEYWORDS)
+
+def is_english(text: str) -> bool:
+    """Best-effort English-language check on a job description. Used by
+    --quick mode. Only imports langdetect when actually needed so the
+    default run doesn't require it."""
+    text = (text or "").strip()
+    if len(text) < 40:
+        return True  # too short to reliably detect — don't discard on a guess
+    try:
+        from langdetect import detect, LangDetectException
+    except ImportError:
+        return True  # langdetect not installed — don't gate on missing dep
+    try:
+        return detect(text) == "en"
+    except Exception:
+        return True  # detection failed — don't discard, let scoring/review decide
 
 # ── pipeline file ──────────────────────────────────────────────────────────
 
@@ -234,6 +366,8 @@ def scrape_company_boards(profile, seen_urls, tracked_pairs):
         tracked_pairs.add(pair)
         if is_excluded(title):
             return
+        if desc and not is_english(desc):
+            return
         score = score_job(title, desc, profile)
         if score < 5:
             return
@@ -250,77 +384,107 @@ def scrape_company_boards(profile, seen_urls, tracked_pairs):
 
     _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"}
 
-    # ── Greenhouse ──────────────────────────────────────────────────────────
-    if greenhouse_list:
-        print(f"\n>> Checking {len(greenhouse_list)} Greenhouse boards...")
-        for company_name, slug in greenhouse_list:
-            try:
-                resp = requests.get(
-                    f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs",
-                    headers=_HEADERS, timeout=10,
-                )
-                if resp.status_code != 200:
-                    continue
-                for job in resp.json().get("jobs", []):
-                    title  = job.get("title", "").strip()
-                    url    = job.get("absolute_url", "").strip()
-                    loc    = (job.get("location") or {}).get("name", "").strip()
-                    posted = (job.get("updated_at") or "")[:10]
-                    if not _is_de_location(loc):
-                        continue
-                    _add(title, company_name, loc, url, posted, "greenhouse")
-            except Exception as e:
-                print(f"   [WARN] Greenhouse {slug}: {e}")
+    # ── Parallel raw fetch ────────────────────────────────────────────────────
+    # Each board is an independent HTTP call to a developer-facing JSON API
+    # (not a scraping-protected page), so these are safe and fast to run
+    # concurrently. Dedup/scoring (_add) stays single-threaded afterward so
+    # seen_urls/tracked_pairs never race across threads.
 
-    # ── Ashby ───────────────────────────────────────────────────────────────
-    if ashby_list:
-        print(f"\n>> Checking {len(ashby_list)} Ashby boards...")
-        for company_name, slug in ashby_list:
-            try:
-                resp = requests.post(
-                    "https://api.ashbyhq.com/posting-public/job-board",
-                    json={"organizationHostedJobsPageName": slug},
-                    headers=_HEADERS, timeout=10,
-                )
-                if resp.status_code != 200:
-                    continue
-                for job in resp.json().get("jobPostings", []):
-                    title   = job.get("title", "").strip()
-                    job_id  = job.get("id", "")
-                    url     = job.get("externalLink", "") or f"https://jobs.ashbyhq.com/{slug}/{job_id}"
-                    loc_raw = job.get("location") or {}
-                    loc     = (loc_raw.get("name", "") if isinstance(loc_raw, dict) else str(loc_raw)).strip()
-                    posted  = (job.get("publishedAt") or "")[:10]
-                    if not _is_de_location(loc):
-                        continue
-                    _add(title, company_name, loc, url, posted, "ashby")
-            except Exception as e:
-                print(f"   [WARN] Ashby {slug}: {e}")
+    def _fetch_greenhouse(slug):
+        try:
+            resp = requests.get(
+                f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs",
+                headers=_HEADERS, timeout=10,
+            )
+            if resp.status_code != 200:
+                return []
+            return resp.json().get("jobs", [])
+        except Exception as e:
+            print(f"   [WARN] Greenhouse {slug}: {e}")
+            return []
 
-    # ── Lever ───────────────────────────────────────────────────────────────
-    if lever_list:
-        print(f"\n>> Checking {len(lever_list)} Lever boards...")
-        for company_name, slug in lever_list:
-            try:
-                resp = requests.get(
-                    f"https://api.lever.co/v0/postings/{slug}?mode=json",
-                    headers=_HEADERS, timeout=10,
-                )
-                if resp.status_code != 200:
+    def _fetch_ashby(slug):
+        try:
+            resp = requests.post(
+                "https://api.ashbyhq.com/posting-public/job-board",
+                json={"organizationHostedJobsPageName": slug},
+                headers=_HEADERS, timeout=10,
+            )
+            if resp.status_code != 200:
+                return []
+            return resp.json().get("jobPostings", [])
+        except Exception as e:
+            print(f"   [WARN] Ashby {slug}: {e}")
+            return []
+
+    def _fetch_lever(slug):
+        try:
+            resp = requests.get(
+                f"https://api.lever.co/v0/postings/{slug}?mode=json",
+                headers=_HEADERS, timeout=10,
+            )
+            if resp.status_code != 200:
+                return []
+            return resp.json()
+        except Exception as e:
+            print(f"   [WARN] Lever {slug}: {e}")
+            return []
+
+    boards = (
+        [("greenhouse", name, slug) for name, slug in greenhouse_list] +
+        [("ashby", name, slug) for name, slug in ashby_list] +
+        [("lever", name, slug) for name, slug in lever_list]
+    )
+    board_workers = max(1, len(boards))
+    print(f"\n>> Checking {len(boards)} ATS boards ({len(greenhouse_list)} Greenhouse, "
+          f"{len(ashby_list)} Ashby, {len(lever_list)} Lever) — up to {board_workers} in parallel...")
+
+    _FETCHERS = {"greenhouse": _fetch_greenhouse, "ashby": _fetch_ashby, "lever": _fetch_lever}
+    raw = {}
+    with ThreadPoolExecutor(max_workers=board_workers) as executor:
+        futures = {
+            executor.submit(_FETCHERS[kind], slug): (kind, name, slug)
+            for kind, name, slug in boards
+        }
+        for future in as_completed(futures):
+            kind, name, slug = futures[future]
+            raw[(kind, name, slug)] = future.result()
+
+    # ── Sequential processing (dedup + scoring) in a stable order ────────────
+    for kind, name, slug in boards:
+        for job in raw.get((kind, name, slug), []):
+            if kind == "greenhouse":
+                title  = job.get("title", "").strip()
+                url    = job.get("absolute_url", "").strip()
+                loc    = (job.get("location") or {}).get("name", "").strip()
+                posted = (job.get("updated_at") or "")[:10]
+                desc   = re.sub(r'<[^>]+>', ' ', job.get("content", "") or "")[:500]
+                if not _is_de_location(loc):
                     continue
-                for job in resp.json():
-                    title  = job.get("text", "").strip()
-                    url    = job.get("hostedUrl", "").strip()
-                    cats   = job.get("categories", {})
-                    loc    = cats.get("location", "").strip()
-                    ts     = job.get("createdAt", 0)
-                    posted = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d") if ts else "—"
-                    desc   = job.get("descriptionPlain", "")[:500]
-                    if not _is_de_location(loc):
-                        continue
-                    _add(title, company_name, loc, url, posted, "lever", desc)
-            except Exception as e:
-                print(f"   [WARN] Lever {slug}: {e}")
+                _add(title, name, loc, url, posted, "greenhouse", desc)
+            elif kind == "ashby":
+                title   = job.get("title", "").strip()
+                job_id  = job.get("id", "")
+                url     = job.get("externalLink", "") or f"https://jobs.ashbyhq.com/{slug}/{job_id}"
+                loc_raw = job.get("location") or {}
+                loc     = (loc_raw.get("name", "") if isinstance(loc_raw, dict) else str(loc_raw)).strip()
+                posted  = (job.get("publishedAt") or "")[:10]
+                desc    = (job.get("descriptionPlain") or
+                           re.sub(r'<[^>]+>', ' ', job.get("descriptionHtml", "") or ""))[:500]
+                if not _is_de_location(loc):
+                    continue
+                _add(title, name, loc, url, posted, "ashby", desc)
+            else:  # lever
+                title  = job.get("text", "").strip()
+                url    = job.get("hostedUrl", "").strip()
+                cats   = job.get("categories", {})
+                loc    = cats.get("location", "").strip()
+                ts     = job.get("createdAt", 0)
+                posted = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d") if ts else "—"
+                desc   = job.get("descriptionPlain", "")[:500]
+                if not _is_de_location(loc):
+                    continue
+                _add(title, name, loc, url, posted, "lever", desc)
 
     return results
 
@@ -330,8 +494,17 @@ def scrape_company_boards(profile, seen_urls, tracked_pairs):
 _BA_BASE    = "https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v4/jobs"
 _BA_HEADERS = {"User-Agent": "Mozilla/5.0", "X-API-Key": "jobboerse-jobsuche"}
 
-def scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old: int = 7):
-    """Query the Bundesagentur für Arbeit public REST API (no auth required)."""
+def scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old: int = 1):
+    """Query the Bundesagentur für Arbeit public REST API (no auth required).
+
+    NOTE: unlike the other sources, this API's list endpoint returns no
+    description text (only title/employer/location), so the English-language
+    filter applied elsewhere can't run here without an extra per-job detail
+    call. Left unfiltered by design rather than adding ~25 extra HTTP calls
+    per run for a low-value/expensive check — many DE-market postings here
+    are German-language regardless, which is expected for a Germany-specific
+    source.
+    """
     results = []
     cutoff  = (date.today() - timedelta(days=days_old)).isoformat()
 
@@ -343,9 +516,9 @@ def scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old: int = 7):
         "Data Architect",
     ]
 
-    print(f"\n>> Arbeitsagentur: searching {len(search_terms)} terms (last {days_old} days)...")
+    print(f"\n>> Arbeitsagentur: searching {len(search_terms)} terms (last {days_old} days), in parallel...")
 
-    for term in search_terms:
+    def _fetch_ba(term):
         try:
             resp = requests.get(
                 _BA_BASE,
@@ -356,9 +529,21 @@ def scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old: int = 7):
             )
             if resp.status_code != 200:
                 print(f"   [WARN] Arbeitsagentur '{term}': HTTP {resp.status_code}")
-                continue
+                return []
+            return resp.json().get("stellenangebote", [])
+        except Exception as e:
+            print(f"   [WARN] Arbeitsagentur '{term}': {e}")
+            return []
 
-            for job in resp.json().get("stellenangebote", []):
+    raw = {}
+    with ThreadPoolExecutor(max_workers=len(search_terms)) as executor:
+        futures = {executor.submit(_fetch_ba, term): term for term in search_terms}
+        for future in as_completed(futures):
+            raw[futures[future]] = future.result()
+
+    for term in search_terms:
+        try:
+            for job in raw.get(term, []):
                 pub = job.get("aktuelleVeroeffentlichungsdatum", "")
                 if pub and pub < cutoff:
                     continue
@@ -460,6 +645,9 @@ def scrape_arbeitnow(profile, seen_urls, tracked_pairs):
                     continue
                 tracked_pairs.add(pair)
 
+                if desc and not is_english(desc):
+                    continue
+
                 score = score_job(title, desc, profile)
                 if score < 4:
                     continue
@@ -484,6 +672,11 @@ def scrape_arbeitnow(profile, seen_urls, tracked_pairs):
 
 
 # ── StepStone RSS (jailbreak via public feed) ──────────────────────────────
+# NOTE (2026-07-23): confirmed via curl that stepstone.de/rss/stellenangebote.html
+# now returns a flat HTTP 404 — StepStone appears to have removed this public feed
+# entirely (not a transient block). Left in place since it degrades gracefully and
+# costs nothing if it comes back; Google Jobs already aggregates most StepStone
+# listings as a fallback in the jobspy pass above.
 
 def scrape_stepstone_rss(profile, seen_urls, tracked_pairs):
     """StepStone RSS feed — bypasses HTML scraping blocks. Silently skips if gated."""
@@ -540,6 +733,9 @@ def scrape_stepstone_rss(profile, seen_urls, tracked_pairs):
                     continue
                 tracked_pairs.add(pair)
 
+                if desc and not is_english(desc):
+                    continue
+
                 score = score_job(title, desc, profile)
                 if score < 4:
                     continue
@@ -572,19 +768,37 @@ def scrape_stepstone_rss(profile, seen_urls, tracked_pairs):
 
 def main():
     hours_old = 24
-    if len(sys.argv) > 1:
+    full_run  = "--full" in sys.argv
+    quick_run = "--quick" in sys.argv
+    for arg in sys.argv[1:]:
+        if arg in ("--full", "--quick"):
+            continue
         try:
-            hours_old = int(sys.argv[1])
+            hours_old = int(arg)
         except ValueError:
             pass
-    print(f"Loading profile... (hours_old={hours_old})")
+    if quick_run:
+        mode = "quick (LinkedIn/EU only, single term, English descriptions only)"
+    elif full_run:
+        mode = "full"
+    else:
+        mode = "daily (LinkedIn-only for the main jobspy pass)"
+    print(f"Loading profile... (hours_old={hours_old}, mode={mode})")
     profile = load_profile()
 
     print("Loading tracked jobs for dedup...")
     tracked_urls = load_tracked_urls()
-    session_pairs = set()
+    # Seeded with historical (company, title) pairs, not just this run's —
+    # catches the same job already tracked under a different URL from a
+    # different platform/scraper (see load_tracked_pairs docstring).
+    session_pairs = load_tracked_pairs()
+    print(f"   {len(tracked_urls)} tracked URLs, {len(session_pairs)} tracked (company, title) pairs")
 
-    search_terms = [
+    # --quick: a single broad term is enough for a fast daily LinkedIn-only
+    # check (formerly a separate script, scrape_linkedin_europe.py — folded
+    # in here so there's one scraper, not two issuing overlapping LinkedIn/EU
+    # calls back to back).
+    search_terms = ["Data Engineer"] if quick_run else [
         profile["target"]["primary_role"],
         "Data Analytics Engineer",
         "Analytics Engineer",
@@ -592,11 +806,16 @@ def main():
         "Data Architect",
     ]
 
+    # List of countries to search — add more here (or in profile.yml under
+    # target.search_countries) to expand beyond Germany/Netherlands.
+    search_countries = profile.get("target", {}).get("search_countries", ["Germany"])
+
     try:
         from jobspy import scrape_jobs
     except ImportError:
         print("ERROR: jobspy not installed. Run: pip install python-jobspy")
         sys.exit(1)
+    patch_jobspy_country_parsing()
 
     all_jobs = []
     seen_urls = set(tracked_urls)
@@ -604,101 +823,206 @@ def main():
     # ── jobspy: LinkedIn + Indeed + Glassdoor + Google Jobs ─────────────────
     # Google Jobs aggregates StepStone, XING, and hundreds of other sources —
     # it is the most effective jailbreak for boards that block direct scraping.
-    for term in search_terms:
-        print(f"\n>> Searching: '{term}' in Germany...")
-        try:
-            df = scrape_jobs(
-                site_name=["linkedin", "indeed", "google"],
-                search_term=term,
-                location="Germany",
-                results_wanted=50,
-                country_indeed="Germany",
-                hours_old=hours_old,
-                linkedin_fetch_description=False,
-                verbose=0,
-            )
-            if df is None or df.empty:
-                print(f"   No results for '{term}'")
+    #
+    # NOTE (2026-07-23): Glassdoor is included below but currently returns 0
+    # results for German locations via jobspy — "Glassdoor response status
+    # code 400 / location not parsed". This is an upstream jobspy/Glassdoor
+    # issue (Glassdoor tightened anti-scraping), not a bug here. Left in the
+    # site list since it's harmless (doesn't affect Indeed/Google) and will
+    # silently start working again if/when jobspy patches it.
+
+    def _process_df(df, all_jobs, seen_urls, session_pairs, profile, location_filter=None,
+                     require_english=False):
+        """Dedup + score + append rows from a jobspy result DataFrame. Single-
+        threaded by design — called after all parallel fetches complete, so
+        seen_urls/session_pairs never race across threads."""
+        if df is None or df.empty:
+            return
+        for _, row in df.iterrows():
+            title   = str(row.get("title", "")).strip()
+            company = str(row.get("company", "")).strip()
+            url     = str(row.get("job_url", "")).strip()
+            loc     = str(row.get("location", "")).strip()
+            desc    = str(row.get("description", "") or "")
+            remote  = bool(row.get("is_remote", False))
+
+            if not title or not company:
+                continue
+            if location_filter and not location_filter(loc):
                 continue
 
-            print(f"   Found {len(df)} raw results")
+            url_key = url.lower()
+            if url_key in seen_urls:
+                continue
+            seen_urls.add(url_key)
 
-            for _, row in df.iterrows():
-                title   = str(row.get("title", "")).strip()
-                company = str(row.get("company", "")).strip()
-                url     = str(row.get("job_url", "")).strip()
-                loc     = str(row.get("location", "")).strip()
-                desc    = str(row.get("description", "") or "")
-                remote  = bool(row.get("is_remote", False))
+            pair = (company.lower(), normalize_title(title))
+            if pair in session_pairs:
+                continue
+            session_pairs.add(pair)
 
-                if not title or not company:
-                    continue
+            if is_excluded(title):
+                continue
 
-                url_key = url.lower()
-                if url_key in seen_urls:
-                    continue
-                seen_urls.add(url_key)
+            if require_english and not is_english(desc):
+                continue
 
-                pair = (company.lower(), normalize_title(title))
-                if pair in session_pairs:
-                    continue
-                session_pairs.add(pair)
+            score = score_job(title, desc, profile)
+            if score < 4:
+                continue
 
-                if is_excluded(title):
-                    continue
+            posted = row.get("date_posted", None)
+            posted_str = str(posted) if posted and str(posted) not in ("NaT", "None") else "—"
 
-                score = score_job(title, desc, profile)
-                if score < 4:
-                    continue
+            # normalize site name so dashboard badges work
+            site = str(row.get("site", "")).lower()
+            if "linkedin" in site:
+                source = "linkedin"
+            elif "indeed" in site:
+                source = "indeed"
+            elif "glassdoor" in site:
+                source = "glassdoor"
+            elif "google" in site:
+                source = "google"
+            else:
+                source = site
 
-                posted = row.get("date_posted", None)
-                posted_str = str(posted) if posted and str(posted) not in ("NaT", "None") else "—"
+            all_jobs.append({
+                "title":       title,
+                "company":     company,
+                "location":    loc,
+                "score":       score,
+                "job_url":     url,
+                "is_remote":   remote,
+                "source":      source,
+                "date_posted": posted_str,
+            })
 
-                # normalize site name so dashboard badges work
-                site = str(row.get("site", "")).lower()
-                if "linkedin" in site:
-                    source = "linkedin"
-                elif "indeed" in site:
-                    source = "indeed"
-                elif "glassdoor" in site:
-                    source = "glassdoor"
-                elif "google" in site:
-                    source = "google"
-                else:
-                    source = site
+    # ── Phase A: LinkedIn, searched once per term across the European Union ──
+    # jobspy's LinkedIn scraper accepts a free-text location and does its own
+    # server-side geo resolution — "European Union" works directly (confirmed:
+    # returns EU member states only, no UK/Switzerland/Norway/Turkey, matching
+    # LinkedIn's own "European Union" geo entity, geoId=91000000). This
+    # replaces what would otherwise be 13 separate per-country LinkedIn calls
+    # (one per search_countries entry) with 5 (one per search term). Results
+    # are still filtered down to just search_countries afterward as a second
+    # safety net (e.g. against EU member states not yet in that list).
+    print(f"\n>> LinkedIn: searching the European Union, {len(search_terms)} terms in parallel...")
 
-                all_jobs.append({
-                    "title":       title,
-                    "company":     company,
-                    "location":    loc,
-                    "score":       score,
-                    "job_url":     url,
-                    "is_remote":   remote,
-                    "source":      source,
-                    "date_posted": posted_str,
-                })
+    def _country_location_filter(loc):
+        loc_l = loc.lower()
+        return any(country.lower() in loc_l for country in search_countries)
 
+    def _fetch_linkedin_europe(term):
+        try:
+            return scrape_jobs(
+                site_name=["linkedin"],
+                search_term=term,
+                location="European Union",
+                results_wanted=100 if quick_run else 75,
+                hours_old=hours_old,
+                # Need full descriptions to run the English-language filter below.
+                linkedin_fetch_description=True,
+                verbose=0,
+            ), None
         except Exception as e:
-            print(f"   [WARN] Error scraping '{term}': {e}")
-            continue
+            return None, e
 
-    # ── Company ATS boards (Greenhouse + Ashby + Lever) ─────────────────────
-    board_jobs = scrape_company_boards(profile, seen_urls, session_pairs)
-    if board_jobs:
-        all_jobs.extend(board_jobs)
-        print(f"   + {len(board_jobs)} from company ATS boards")
+    with ThreadPoolExecutor(max_workers=len(search_terms)) as executor:
+        futures = {executor.submit(_fetch_linkedin_europe, t): t for t in search_terms}
+        for future in as_completed(futures):
+            term = futures[future]
+            df, err = future.result()
+            if err:
+                print(f"   [WARN] LinkedIn/Europe '{term}': {err}")
+                continue
+            n_total = 0 if df is None else len(df)
+            _process_df(df, all_jobs, seen_urls, session_pairs, profile,
+                        location_filter=_country_location_filter,
+                        require_english=True)
+            print(f"   '{term}': {n_total} raw results across Europe "
+                  f"(filtered to {', '.join(search_countries)})")
 
-    # ── Bundesagentur für Arbeit ─────────────────────────────────────────────
-    ba_jobs = scrape_arbeitsagentur(profile, seen_urls, session_pairs, days_old=7)
-    all_jobs.extend(ba_jobs)
+    if quick_run:
+        print("\n>> --quick mode: skipping Indeed/Google/Glassdoor, ATS boards, "
+              "Arbeitsagentur, Arbeitnow, and StepStone — LinkedIn/EU only.")
 
-    # ── Arbeitnow (EU tech board) ─────────────────────────────────────────────
-    an_jobs = scrape_arbeitnow(profile, seen_urls, session_pairs)
-    all_jobs.extend(an_jobs)
+    # ── Phase B: Indeed + Google + Glassdoor, per country ────────────────────
+    # These three don't support a broad "European Union" location the way
+    # LinkedIn does (Indeed's country_indeed param has a strict per-country
+    # enum, checked directly against jobspy's Country list), so
+    # they stay looped per search_countries entry — but fetched in parallel.
+    # Even parallelized this is the slow part (13 countries x 5 terms = 65
+    # calls), so it's opt-in via --full. Default runs are LinkedIn-only,
+    # which covers daily use fine on its own.
+    if full_run:
+        # max_workers is capped at 6 rather than firing all (country x term)
+        # calls at once — the aim is to avoid too much concurrency from one
+        # IP, which risks getting rate-limited/blocked rather than actually
+        # going faster.
+        tasks = [(c, t) for c in search_countries for t in search_terms]
+        MAX_SCRAPE_WORKERS = min(6, len(tasks))
+        print(f"\n>> Indeed/Google/Glassdoor: fetching {len(tasks)} (country, search term) "
+              f"combinations across {MAX_SCRAPE_WORKERS} parallel workers...")
 
-    # ── StepStone RSS (jailbreak attempt) ────────────────────────────────────
-    ss_jobs = scrape_stepstone_rss(profile, seen_urls, session_pairs)
-    all_jobs.extend(ss_jobs)
+        def _fetch_jobspy(country, term):
+            try:
+                df = scrape_jobs(
+                    site_name=["indeed", "google", "glassdoor"],
+                    search_term=term,
+                    location=country,
+                    results_wanted=50,
+                    country_indeed=country,
+                    hours_old=hours_old,
+                    verbose=0,
+                )
+                return df, None
+            except Exception as e:
+                return None, e
+
+        fetched = {}
+        with ThreadPoolExecutor(max_workers=MAX_SCRAPE_WORKERS) as executor:
+            futures = {executor.submit(_fetch_jobspy, c, t): (c, t) for c, t in tasks}
+            done = 0
+            for future in as_completed(futures):
+                country, term = futures[future]
+                df, err = future.result()
+                done += 1
+                if err:
+                    print(f"   [{done}/{len(tasks)}] [WARN] '{term}' in {country}: {err}")
+                elif df is None or df.empty:
+                    print(f"   [{done}/{len(tasks)}] '{term}' in {country}: no results")
+                else:
+                    print(f"   [{done}/{len(tasks)}] '{term}' in {country}: {len(df)} raw results")
+                fetched[(country, term)] = df
+
+        # Sequential dedup + scoring, in stable (country, term) order regardless
+        # of fetch completion order, so results/dedup precedence stay deterministic.
+        for country, term in tasks:
+            _process_df(fetched.get((country, term)), all_jobs, seen_urls, session_pairs, profile,
+                        require_english=True)
+    else:
+        print("\n>> Skipping Indeed/Google/Glassdoor per-country pass (daily mode). "
+              "Run with --full for full multi-source coverage.")
+
+    if not quick_run:
+        # ── Company ATS boards (Greenhouse + Ashby + Lever) ──────────────────
+        board_jobs = scrape_company_boards(profile, seen_urls, session_pairs)
+        if board_jobs:
+            all_jobs.extend(board_jobs)
+            print(f"   + {len(board_jobs)} from company ATS boards")
+
+        # ── Bundesagentur für Arbeit ──────────────────────────────────────────
+        ba_jobs = scrape_arbeitsagentur(profile, seen_urls, session_pairs, days_old=1)
+        all_jobs.extend(ba_jobs)
+
+        # ── Arbeitnow (EU tech board) ─────────────────────────────────────────
+        an_jobs = scrape_arbeitnow(profile, seen_urls, session_pairs)
+        all_jobs.extend(an_jobs)
+
+        # ── StepStone RSS (jailbreak attempt) ──────────────────────────────────
+        ss_jobs = scrape_stepstone_rss(profile, seen_urls, session_pairs)
+        all_jobs.extend(ss_jobs)
 
     # sort by score desc
     all_jobs.sort(key=lambda x: x["score"], reverse=True)

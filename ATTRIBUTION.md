@@ -1,8 +1,5 @@
 # Attribution
 
-career-ops-plugin is a Claude Cowork adaptation of
-[career-ops](https://github.com/santifer/career-ops) by santifer.
-
 The original career-ops is a Claude Code skill for job search automation,
 featuring the A-F scoring rubric, ATS-optimized resume generation, and
 application tracking system that this plugin builds upon.

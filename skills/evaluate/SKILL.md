@@ -215,6 +215,25 @@ Add a row to `data/applications.md` (create the file if it doesn't exist):
 |---|---|---|---|---|---|---|---|
 | {today} | | {company} | {title} | {score} | Evaluated | [View](evaluations/{filename}) | |
 
+Also append this evaluation to `data/evaluate-jobs.json` (create as `[]` if
+it doesn't exist) so the skill-gap dashboard (`generate_evaluate_dashboard.py`)
+stays current:
+
+```json
+{
+  "title": "{job title}",
+  "company": "{company}",
+  "location": "{city or Remote}",
+  "url": "{job posting URL, or \"\" if pasted text with no URL}",
+  "score": {overall score from Step 9, e.g. 4.2},
+  "jd_text": "{the full job description text extracted in Step 1}"
+}
+```
+
+Don't regenerate the HTML dashboard automatically after every single
+evaluation (it's a batch view, not meant to refresh per-job) — just mention
+in Step 11 that they can ask you to refresh it.
+
 ## Step 11: Suggest Next Steps
 
 Based on score:
@@ -225,3 +244,9 @@ Based on score:
   strengths for this role. Say 'tailor my resume' to continue."
 - **Below 3.0:** "This one's a stretch. I'd recommend focusing on
   better-matched roles. Want me to scan for openings that fit you better?"
+
+Also mention (don't over-offer this every time — once per session is enough):
+> "Say 'refresh the evaluate dashboard' any time to see a skill-gap view
+> across all your evaluations so far — I'll run
+> `python scripts/generate_evaluate_dashboard.py` and open
+> `data/evaluate-dashboard.html`."

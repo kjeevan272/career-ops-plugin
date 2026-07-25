@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Job search copilot for any industry. Evaluate job postings, generate ATS-optimized resumes, scan career portals, track applications, draft outreach, and research companies. Works for engineers, marketers, nurses, lawyers, and everyone in between.",
   "author": {
-    "name": "Andrew Shwetzer",
-    "url": "https://github.com/andrewshwetzer"
+    "name": "Jeevan Kumar Kondasingu",
+    "url": "https://github.com/kjeevan272"
   },
-  "repository": "https://github.com/andrewshwetzer/career-ops-plugin",
+  "repository": "https://github.com/kjeevan272/career-ops-plugin",
   "keywords": [
     "job-search",
     "resume",

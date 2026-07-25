@@ -6,3 +6,11 @@ config/
 .DS_Store
 Thumbs.db
 prd/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Personal/machine-specific permission history, not meant to be shared
+.claude/settings.local.json
