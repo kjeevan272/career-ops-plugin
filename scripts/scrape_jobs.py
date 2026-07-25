@@ -97,6 +97,36 @@ def load_tracked_urls():
                 urls.add(url.strip("()").lower())
     return urls
 
+def load_tracked_url_pairs():
+    """Collect (url, normalized title) pairs already in pipeline.md and
+    applications.md. Some sources (e.g. a company career page with no
+    per-job permalinks) return the SAME generic URL for many genuinely
+    different job postings — plain URL-only dedup would then treat those
+    distinct jobs as duplicates of each other and only keep the first one
+    seen. Keying on (url, title) instead only treats it as "already seen"
+    when both match, which still catches real repeats (same URL AND same
+    title) without collapsing different titles that happen to share a URL."""
+    pairs = set()
+    for path in [APPS_PATH, PIPELINE_PATH]:
+        if not path.exists():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.startswith("|") or line.startswith("| Date") or line.startswith("|---"):
+                continue
+            cols = [c.strip() for c in line.strip("|").split("|")]
+            if len(cols) < 4:
+                continue
+            company = cols[2]
+            role = "|".join(cols[3:-6]).strip() if len(cols) >= 10 else cols[3]
+            if not company or company.lower() in ("company", "---"):
+                continue
+            url_match = re.search(r'\(https?://[^\)]+\)', line)
+            if not url_match:
+                continue
+            url = url_match.group(0).strip("()").lower()
+            pairs.add((url, normalize_title(role)))
+    return pairs
+
 def load_tracked_pairs():
     """Collect (company, normalized title) pairs already in pipeline.md and
     applications.md. URL-only dedup (load_tracked_urls) misses the same job
@@ -356,7 +386,7 @@ def scrape_company_boards(profile, seen_urls, tracked_pairs):
             return
         if not any(kw in title.lower() for kw in _ATS_TITLE_KW):
             return
-        url_key = url.lower()
+        url_key = (url.lower(), normalize_title(title))
         if url_key in seen_urls:
             return
         seen_urls.add(url_key)
@@ -561,7 +591,7 @@ def scrape_arbeitsagentur(profile, seen_urls, tracked_pairs, days_old: int = 1):
                 if is_excluded(title):
                     continue
 
-                url_key = url.lower()
+                url_key = (url.lower(), normalize_title(title))
                 if url_key in seen_urls:
                     continue
                 seen_urls.add(url_key)
@@ -635,7 +665,7 @@ def scrape_arbeitnow(profile, seen_urls, tracked_pairs):
                 if is_excluded(title):
                     continue
 
-                url_key = url.lower()
+                url_key = (url.lower(), normalize_title(title))
                 if url_key in seen_urls:
                     continue
                 seen_urls.add(url_key)
@@ -723,7 +753,7 @@ def scrape_stepstone_rss(profile, seen_urls, tracked_pairs):
                 if is_excluded(title):
                     continue
 
-                url_key = url.lower()
+                url_key = (url.lower(), normalize_title(title))
                 if url_key in seen_urls:
                     continue
                 seen_urls.add(url_key)
@@ -787,12 +817,12 @@ def main():
     profile = load_profile()
 
     print("Loading tracked jobs for dedup...")
-    tracked_urls = load_tracked_urls()
+    tracked_urls = load_tracked_url_pairs()
     # Seeded with historical (company, title) pairs, not just this run's —
     # catches the same job already tracked under a different URL from a
     # different platform/scraper (see load_tracked_pairs docstring).
     session_pairs = load_tracked_pairs()
-    print(f"   {len(tracked_urls)} tracked URLs, {len(session_pairs)} tracked (company, title) pairs")
+    print(f"   {len(tracked_urls)} tracked (url, title) pairs, {len(session_pairs)} tracked (company, title) pairs")
 
     # --quick: a single broad term is enough for a fast daily LinkedIn-only
     # check (formerly a separate script, scrape_linkedin_europe.py — folded
@@ -851,7 +881,7 @@ def main():
             if location_filter and not location_filter(loc):
                 continue
 
-            url_key = url.lower()
+            url_key = (url.lower(), normalize_title(title))
             if url_key in seen_urls:
                 continue
             seen_urls.add(url_key)

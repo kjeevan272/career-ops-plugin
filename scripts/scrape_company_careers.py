@@ -55,8 +55,8 @@ LAST_RUN_PATH = DATA_DIR / ".last-run-company.json"
 
 sys.path.insert(0, str(Path(__file__).parent))
 from scrape_jobs import (  # noqa: E402
-    load_profile, load_tracked_urls, load_tracked_pairs, normalize_title,
-    is_excluded, is_english, score_job, append_to_pipeline,
+    load_profile, load_tracked_url_pairs, load_tracked_pairs, normalize_title,
+    score_job, append_to_pipeline,
 )
 
 # fetch_jobs_async always tries a plain HTTP GET first and only falls back to
@@ -778,11 +778,18 @@ async def collect_jobs_for_source(
 
 
 def route_to_pipeline(matched_jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Score/dedup/English-filter matched_jobs using the same logic
-    scrape_jobs.py uses, then append survivors to data/pipeline.md so both
-    scrapers feed the one dashboard."""
+    """Dedup matched_jobs against tracked history, score them the same way
+    scrape_jobs.py does (for sorting/dashboard filtering), then append ALL
+    of them to data/pipeline.md — score/title/language are shown, not used
+    to drop results, since the dashboard already has filters for score and
+    the user would rather see everything the crawl found than have it
+    silently decided for them."""
     profile = load_profile()
-    seen_urls = load_tracked_urls()
+    # Composite (url, title) key: some company career pages have no stable
+    # per-job permalink and return the SAME generic URL for every listing
+    # (e.g. Infosys's search-results page) — URL-only dedup would then treat
+    # distinct job postings as duplicates of each other and drop all but one.
+    seen_urls = load_tracked_url_pairs()
     # Seeded with historical pairs so a job already found via LinkedIn/Indeed/
     # ATS boards (a different URL) doesn't get re-added here under this
     # crawler's own URL for the same company+title.
@@ -798,7 +805,7 @@ def route_to_pipeline(matched_jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]
         if not title or not company or not url:
             continue
 
-        url_key = url.lower()
+        url_key = (url.lower(), normalize_title(title))
         if url_key in seen_urls:
             continue
         seen_urls.add(url_key)
@@ -808,14 +815,7 @@ def route_to_pipeline(matched_jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]
             continue
         session_pairs.add(pair)
 
-        if is_excluded(title):
-            continue
-        if desc and not is_english(desc):
-            continue
-
         score = score_job(title, desc, profile)
-        if score < 4:
-            continue
 
         pipeline_matches.append({
             "title":       title,
