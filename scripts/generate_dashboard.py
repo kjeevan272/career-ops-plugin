@@ -13,6 +13,7 @@ Flags:
 import json
 import re
 import sys
+import yaml
 from datetime import date
 from pathlib import Path
 
@@ -23,6 +24,7 @@ ROOT           = Path(__file__).parent.parent
 PIPELINE_PATH  = ROOT / "data" / "pipeline.md"
 LAST_RUN_PATH  = ROOT / "data" / ".last-run.json"
 APPS_PATH      = ROOT / "data" / "applications.md"
+PROFILE_PATH   = ROOT / "data" / "profile.yml"
 OUTPUT_PATH    = ROOT / "data" / "pipeline-dashboard.html"
 
 
@@ -162,6 +164,30 @@ def attach_docs(jobs, app_entries):
             j["cover_doc"]  = ""
 
 
+def load_search_countries():
+    try:
+        profile = yaml.safe_load(PROFILE_PATH.read_text(encoding="utf-8"))
+        countries = profile.get("target", {}).get("search_countries", [])
+        return countries or ["Germany"]
+    except Exception:
+        return ["Germany"]
+
+
+def attach_country(jobs, countries=None):
+    """Derive a country label per job from its location string, matching the
+    same substring logic the --country= CLI flag already used (so the
+    dashboard filter and the CLI flag agree on what "located in Germany"
+    means). Falls back to "Other" when the location doesn't contain any of
+    profile.yml's target.search_countries — this catches remote-only
+    postings with a vague/blank location and postings from a country outside
+    the configured search list that still made it in via a broad source."""
+    countries = countries or load_search_countries()
+    for j in jobs:
+        loc = (j.get("location") or "").lower()
+        match = next((c for c in countries if c.lower() in loc), None)
+        j["country"] = match or "Other"
+
+
 def attach_nl_sponsor_status(jobs):
     """For Netherlands-located jobs, flag whether the company is an IND-recognized
     sponsor (can legally sponsor a work/highly-skilled-migrant visa)."""
@@ -199,6 +225,7 @@ def js_array(jobs):
             f'company:"{escape(j["company"])}",' +
             f'role:"{escape(j["role"])}",' +
             f'location:"{escape(j["location"])}",' +
+            f'country:"{escape(j.get("country", "Other"))}",' +
             f'remote:{"true" if j["remote"] else "false"},' +
             f'source:"{src}",' +
             f'posted:"{escape(j["posted"])}",' +
@@ -363,6 +390,9 @@ def generate_html(jobs, run_info, country_label=None):
     <option value="all">All (NL sponsor filter)</option>
     <option value="sponsor">NL: IND-confirmed sponsor only</option>
   </select>
+  <select id="filter-country">
+    <option value="all">All countries</option>
+  </select>
   <span class="count-badge" id="visible-count">— jobs</span>
 </div>
 <div class="table-wrap">
@@ -499,6 +529,7 @@ function applyFilters() {{
   const newFilt  = document.getElementById("filter-new").value;
   const appFilt  = document.getElementById("filter-applied").value;
   const nlFilt   = document.getElementById("filter-nl-sponsor").value;
+  const ctryFilt = document.getElementById("filter-country").value;
 
   render(ALL_JOBS.filter(j => {{
     const text = (j.company + " " + j.role + " " + j.location).toLowerCase();
@@ -512,12 +543,26 @@ function applyFilters() {{
     if (appFilt === "unapplied" && appliedSet.has(j.url)) return false;
     if (appFilt === "applied" && !appliedSet.has(j.url)) return false;
     if (nlFilt === "sponsor" && j.nlSponsor !== true) return false;
+    if (ctryFilt !== "all" && j.country !== ctryFilt) return false;
     return true;
   }}));
 }}
 
+function populateCountryFilter() {{
+  const sel = document.getElementById("filter-country");
+  const counts = {{}};
+  ALL_JOBS.forEach(j => {{ counts[j.country] = (counts[j.country] || 0) + 1; }});
+  Object.keys(counts).sort((a, b) => counts[b] - counts[a]).forEach(country => {{
+    const opt = document.createElement("option");
+    opt.value = country;
+    opt.textContent = `${{country}} (${{counts[country]}})`;
+    sel.appendChild(opt);
+  }});
+}}
+
 updateAppliedStat();
-["search","filter-score","filter-remote","filter-source","filter-new","filter-applied","filter-nl-sponsor"]
+populateCountryFilter();
+["search","filter-score","filter-remote","filter-source","filter-new","filter-applied","filter-nl-sponsor","filter-country"]
   .forEach(id => document.getElementById(id).addEventListener("input", applyFilters));
 applyFilters();
 </script>
@@ -575,6 +620,8 @@ def main():
     attach_docs(jobs, app_entries)
     docs_count = sum(1 for j in jobs if j["resume_doc"] or j["cover_doc"])
     print(f"Matched {docs_count} job(s) to a ready resume/cover letter in applications.md")
+
+    attach_country(jobs)
 
     attach_nl_sponsor_status(jobs)
     nl_count = sum(1 for j in jobs if j["nl_sponsor"] is not None)

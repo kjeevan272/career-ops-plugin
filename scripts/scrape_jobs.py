@@ -239,6 +239,39 @@ _GENERIC_TITLE_PATTERNS = (
 )
 _GENERIC_TITLE_MIN_SKILL_MATCHES = 3
 
+# Best-effort extraction of an overall years-of-experience requirement from
+# JD body text, e.g. "5+ years of experience", "6-8 years' experience",
+# "at least 7 years professional experience". Deliberately permissive on
+# what precedes the number (skips over "at least", "minimum of", etc. since
+# the regex isn't anchored to the start of the phrase) and tolerant of a
+# trailing apostrophe ("years' experience"). Only the first (lower-bound)
+# number in a range is captured, since that's the actual minimum threshold
+# a candidate needs to clear.
+_YEARS_EXPERIENCE_PATTERN = re.compile(
+    r"(\d{1,2})\+?\s*(?:[-–to]{1,3}\s*\d{1,2}\+?\s*)?years?'?\s*"
+    r"(?:of\s+)?(?:professional\s+|relevant\s+|proven\s+|working\s+|hands[- ]on\s+)?experience",
+    re.IGNORECASE,
+)
+
+
+def exceeds_experience_requirement(text: str, max_years: int) -> bool:
+    """True only if EVERY years-of-experience mention in the JD is above
+    max_years — i.e. there's no qualifying reading of the requirement that
+    a candidate with max_years (or fewer) would clear. A JD that mixes a
+    role-level ask with a higher skill-specific one (e.g. "5+ years overall,
+    8+ years in a lead capacity") is NOT excluded, since the 5+ reading
+    still qualifies — this errs toward not hiding a real match over a noisy
+    regex read. Returns False (don't exclude) if nothing matches at all,
+    since most JDs don't state a number and absence of a stated minimum
+    isn't evidence the role needs more than max_years."""
+    if not text or not max_years:
+        return False
+    minimums = [int(m) for m in _YEARS_EXPERIENCE_PATTERN.findall(text)]
+    if not minimums:
+        return False
+    return all(m > max_years for m in minimums)
+
+
 def score_job(title: str, description: str, profile: dict) -> int:
     title_lc = title.lower()
     text = (title + " " + (description or "")).lower()
@@ -247,6 +280,10 @@ def score_job(title: str, description: str, profile: dict) -> int:
     strict_match = any(p in title_lc for p in _STRICT_TITLE_PATTERNS)
     generic_match = not strict_match and any(p in title_lc for p in _GENERIC_TITLE_PATTERNS)
     if not strict_match and not generic_match:
+        return 0
+
+    max_years = profile.get("target", {}).get("application_filters", {}).get("max_years_experience_required")
+    if max_years and exceeds_experience_requirement(description or "", max_years):
         return 0
 
     matched = sum(1 for kw in SKILL_KEYWORDS if kw in text)
@@ -264,12 +301,13 @@ def score_job(title: str, description: str, profile: dict) -> int:
                                         "business intelligence")):
             score += 1
 
+    # No bonus for "senior/lead/principal/staff" in the title anymore — that
+    # used to add +2, which structurally outranked plain/mid-level-titled
+    # postings ("Data Engineer") against senior-titled ones regardless of
+    # actual fit. Mid-level targeting now comes from primary_role no longer
+    # being "Lead Data Engineer" (see profile.yml) plus the >max_years
+    # exclusion above, not from a title-word scoring bonus.
     score += min(4, matched // 2)
-    seniority_words = ["senior", "lead", "principal", "staff", "head of", "sr."]
-    if any(w in title.lower() for w in seniority_words):
-        score += 2
-    elif any(w in text for w in seniority_words):
-        score += 1
     return min(score, 10)
 
 def is_excluded(title: str) -> bool:
