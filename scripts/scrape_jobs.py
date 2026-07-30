@@ -174,6 +174,7 @@ SKILL_KEYWORDS = [
     # Power BI are in profile.yml) instead of always scoring near 0.
     "tableau", "power bi", "looker", "qlik", "machine learning",
     "data analytics", "business intelligence",
+    "dagster", "fivetran", "geospatial", "mlops",
 ]
 
 EXCLUDE_KEYWORDS = [

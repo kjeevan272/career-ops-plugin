@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Core Data Products — Architecture Reference</title>
+<style>
+  :root {
+    --bg: #eef1f4;
+    --surface: #ffffff;
+    --surface-2: #e6eaef;
+    --ink: #141b24;
+    --muted: #5b6675;
+    --line: #d3dae2;
+    --accent: #0f8fa3;
+    --accent-ink: #ffffff;
+    --warn: #b85c1f;
+    --warn-bg: #fbeee1;
+    --code-bg: #eef3f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1620;
+      --surface: #161f2c;
+      --surface-2: #1c2635;
+      --ink: #e8edf3;
+      --muted: #8996a8;
+      --line: #2a3547;
+      --accent: #5ec8d8;
+      --accent-ink: #0d1420;
+      --warn: #e2905a;
+      --warn-bg: #241c14;
+      --code-bg: #1c2635;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+  }
+  code, .mono, .cp-code, .node-code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, .nav-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .masthead {
+    padding: 28px clamp(20px, 5vw, 48px) 22px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .masthead .eyebrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .masthead h1 {
+    margin: 0 0 6px;
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .masthead p {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--muted);
+    font-size: 14.5px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 0;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  nav.index {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 12px 40px 24px;
+    border-right: 1px solid var(--line);
+  }
+  nav.index .index-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 10px 10px;
+  }
+  nav.index ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  nav.index a {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 13px;
+  }
+  nav.index a:hover { background: var(--surface-2); }
+  nav.index .idx-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--accent);
+    flex-shrink: 0;
+    min-width: 42px;
+  }
+  nav.index .idx-name {
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  main {
+    padding: 32px clamp(20px, 4vw, 48px) 80px;
+    min-width: 0;
+  }
+
+  .cp {
+    padding: 34px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .cp:first-child { padding-top: 6px; }
+  .cp:last-child { border-bottom: none; }
+
+  .cp-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .cp-code {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-ink);
+    background: var(--accent);
+    padding: 3px 9px;
+    border-radius: 5px;
+    letter-spacing: 0.02em;
+  }
+  .cp-head h2 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 640;
+    text-wrap: balance;
+  }
+  .cp-desc {
+    margin: 0 0 18px;
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 68ch;
+  }
+
+  .diagram-panel {
+    background: #0d1420;
+    border: 1px solid #22334a;
+    border-radius: 10px;
+    padding: 16px 12px 8px;
+    overflow-x: auto;
+    margin-bottom: 20px;
+  }
+  .diagram-panel pre.mermaid,
+  .diagram-panel div.mermaid {
+    margin: 0;
+    min-width: 560px;
+  }
+
+  .failures h3 {
+    margin: 0 0 10px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--warn);
+    font-weight: 700;
+  }
+  .failures ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .failures li {
+    display: grid;
+    grid-template-columns: 74px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    background: var(--warn-bg);
+    border-left: 2.5px solid var(--warn);
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px;
+    font-size: 13.5px;
+  }
+  .failures .node-code {
+    color: var(--warn);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding-top: 1px;
+  }
+  .failures .desc { color: var(--ink); }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.index {
+      position: static;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+      padding: 16px 16px 12px;
+    }
+    nav.index ul { flex-direction: row; flex-wrap: wrap; }
+    nav.index a { padding: 5px 8px; }
+    .idx-name { display: none; }
+    main { padding: 24px 18px 60px; }
+    .failures li { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="eyebrow">Data Platform Reference · CP-01 – CP-12</div>
+  <h1>Core Data Products — Component Diagrams &amp; Failure Modes</h1>
+  <p>Twelve foundational data-platform product types, broken into sub-components (CP-xx.y) with the failure modes that actually surface in production for each one.</p>
+</header>
+
+<div class="layout">
+  <nav class="index" aria-label="Core product index">
+    <div class="index-label">Jump to</div>
+    <ul>
+      <li><a class="nav-link" href="#cp-01"><span class="idx-code">CP-01</span><span class="idx-name">EDW / Data Mart</span></a></li>
+      <li><a class="nav-link" href="#cp-02"><span class="idx-code">CP-02</span><span class="idx-name">Cloud Data Lake</span></a></li>
+      <li><a class="nav-link" href="#cp-03"><span class="idx-code">CP-03</span><span class="idx-name">Lakehouse</span></a></li>
+      <li><a class="nav-link" href="#cp-04"><span class="idx-code">CP-04</span><span class="idx-name">Salesforce Integration</span></a></li>
+      <li><a class="nav-link" href="#cp-05"><span class="idx-code">CP-05</span><span class="idx-name">Streaming &amp; Events</span></a></li>
+      <li><a class="nav-link" href="#cp-06"><span class="idx-code">CP-06</span><span class="idx-name">Data Quality &amp; Governance</span></a></li>
+      <li><a class="nav-link" href="#cp-07"><span class="idx-code">CP-07</span><span class="idx-name">Migration Accelerator</span></a></li>
+      <li><a class="nav-link" href="#cp-08"><span class="idx-code">CP-08</span><span class="idx-name">Self-Service BI</span></a></li>
+      <li><a class="nav-link" href="#cp-09"><span class="idx-code">CP-09</span><span class="idx-name">ML Feature/Serving</span></a></li>
+      <li><a class="nav-link" href="#cp-10"><span class="idx-code">CP-10</span><span class="idx-name">FinOps</span></a></li>
+      <li><a class="nav-link" href="#cp-11"><span class="idx-code">CP-11</span><span class="idx-name">MDM</span></a></li>
+      <li><a class="nav-link" href="#cp-12"><span class="idx-code">CP-12</span><span class="idx-name">LLM/RAG Foundation</span></a></li>
+    </ul>
+  </nav>
+
+  <main>
+
+    <section class="cp" id="cp-01">
+      <div class="cp-head"><span class="cp-code">CP-01</span><h2>Enterprise Data Warehouse (EDW) / Data Mart</h2></div>
+      <p class="cp-desc">Staged source data conformed into a dimensional model and exposed through a governed semantic layer.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-01.1<br/>Staging"] --> B["CP-01.2<br/>Integration Layer"]
+  B --> C["CP-01.3<br/>Semantic Layer"]
+  C --> D["CP-01.4<br/>Consumption"]
+  E["CP-01.5<br/>Access Control"]:::gov -.-> C
+  E -.-> D
+  classDef gov fill:#2a3346,stroke:#e2905a,stroke-width:1.5px,color:#e8edf3
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-01.2</span><span class="desc">SCD Type-2 logic done wrong corrupts history silently — no error is thrown, the past just becomes wrong.</span></li>
+          <li><span class="node-code">CP-01.2</span><span class="desc">Grain mismatches between fact tables produce fan-out joins that look plausible but double-count.</span></li>
+          <li><span class="node-code">CP-01.3</span><span class="desc">Business logic duplicated across dbt, the BI tool, and stored procs — three sources of truth for one metric.</span></li>
+          <li><span class="node-code">CP-01.4/.5</span><span class="desc">Unbounded ad hoc query access with no workload management blows up warehouse cost.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-02">
+      <div class="cp-head"><span class="cp-code">CP-02</span><h2>Cloud Data Lake (Bronze / Silver / Gold)</h2></div>
+      <p class="cp-desc">Schema-on-read storage zoned by processing maturity, catalogued for discovery and governed access.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-02.1<br/>Ingestion"] --> B["CP-02.2<br/>Bronze"]
+  B --> C["CP-02.3<br/>Silver"]
+  C --> D["CP-02.4<br/>Gold"]
+  D --> E["CP-02.6<br/>Consumption"]
+  F["CP-02.5<br/>Catalog &amp; Governance"]:::gov -.-> B
+  F -.-> C
+  F -.-> D
+  classDef gov fill:#2a3346,stroke:#e2905a,stroke-width:1.5px,color:#e8edf3
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-02.2</span><span class="desc">The small-file problem — too many tiny objects — tanks query performance over time.</span></li>
+          <li><span class="node-code">CP-02.3</span><span class="desc">Schema evolution breaks downstream consumers when there's no contract enforcement between zones.</span></li>
+          <li><span class="node-code">CP-02.5</span><span class="desc">Crawler-inferred catalog drifts from what the data actually looks like.</span></li>
+          <li><span class="node-code">CP-02.2</span><span class="desc">No ACID guarantees on raw Parquet/S3 means a partial write corrupts a partition silently.</span></li>
+          <li><span class="node-code">CP-02.5</span><span class="desc">Permission sprawl at the lake level — looser and harder to audit than warehouse RBAC.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-03">
+      <div class="cp-head"><span class="cp-code">CP-03</span><h2>Lakehouse (Delta Lake / Databricks)</h2></div>
+      <p class="cp-desc">ACID table storage over the lake, with unified governance and job orchestration on top.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-03.1<br/>Ingestion (Auto Loader/DLT)"] --> B["CP-03.2<br/>Delta Table Storage"]
+  B --> E["CP-03.5<br/>Serving Layer"]
+  C["CP-03.3<br/>Unity Catalog"]:::gov -.-> B
+  D["CP-03.4<br/>Workflow Orchestration"]:::gov -.-> A
+  D -.-> B
+  classDef gov fill:#2a3346,stroke:#e2905a,stroke-width:1.5px,color:#e8edf3
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-03.2</span><span class="desc">Delta log bloat when VACUUM/OPTIMIZE is neglected — small files accumulate under the ACID layer too.</span></li>
+          <li><span class="node-code">CP-03.2</span><span class="desc">Concurrent-writer conflicts when two jobs touch the same table at once.</span></li>
+          <li><span class="node-code">CP-03.4</span><span class="desc">Autoscaling misconfiguration causes either cost spikes or job starvation, rarely something in between.</span></li>
+          <li><span class="node-code">CP-03.3</span><span class="desc">Hive-metastore-to-Unity-Catalog migration is more involved than the marketing implies.</span></li>
+          <li><span class="node-code">CP-03.2</span><span class="desc">Unbounded time-travel retention quietly inflates storage cost.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-04">
+      <div class="cp-head"><span class="cp-code">CP-04</span><h2>Salesforce-to-Cloud Integration Platform</h2></div>
+      <p class="cp-desc">Bulk and incremental extraction from CRM into a governed pipeline, with optional write-back.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-04.1<br/>Bulk Extraction"] --> C["CP-04.3<br/>Landing Zone"]
+  B["CP-04.2<br/>CDC Capture"] --> C
+  C --> D["CP-04.4<br/>Transform &amp; Dedupe"]
+  D --> E["CP-04.5<br/>Target Load"]
+  E -.-> F["CP-04.6<br/>Write-Back (optional)"]
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-04.1</span><span class="desc">API rate limits get hit mid-run during high-volume bulk extracts.</span></li>
+          <li><span class="node-code">CP-04.4</span><span class="desc">A custom-field schema change on the Salesforce side silently breaks downstream mappings.</span></li>
+          <li><span class="node-code">CP-04.2</span><span class="desc">Streaming API connection drops cause CDC replay or ordering issues.</span></li>
+          <li><span class="node-code">CP-04.1/.2</span><span class="desc">Salesforce governor limits collide with concurrent extraction jobs.</span></li>
+          <li><span class="node-code">CP-04.5</span><span class="desc">PII exposure risk once CRM data lands in a less-restricted analytical environment.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-05">
+      <div class="cp-head"><span class="cp-code">CP-05</span><h2>Real-Time Streaming &amp; Event Analytics</h2></div>
+      <p class="cp-desc">High-throughput event ingestion, stream processing, and a sink with dead-letter handling.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-05.1<br/>Producers"] --> B["CP-05.2<br/>Broker &amp; Partitioning"]
+  B --> C["CP-05.3<br/>Stream Processing"]
+  C --> D["CP-05.4<br/>Sink"]
+  C -.-> F["CP-05.6<br/>Dead-Letter Queue"]
+  B --> E["CP-05.5<br/>Lag Monitoring"]:::gov
+  classDef gov fill:#2a3346,stroke:#e2905a,stroke-width:1.5px,color:#e8edf3
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-05.5</span><span class="desc">Consumer lag cascades into stale downstream data with nobody alerted.</span></li>
+          <li><span class="node-code">CP-05.2</span><span class="desc">Hot partitions from a poor key choice overload one consumer while others idle.</span></li>
+          <li><span class="node-code">CP-05.3</span><span class="desc">Exactly-once vs. at-least-once semantics mismatch causes duplicate or lost records.</span></li>
+          <li><span class="node-code">CP-05.4</span><span class="desc">Sink can't keep up with ingest rate — backpressure with no circuit breaker.</span></li>
+          <li><span class="node-code">CP-05.3</span><span class="desc">Schema-registry version mismatch breaks deserialization mid-stream.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-06">
+      <div class="cp-head"><span class="cp-code">CP-06</span><h2>Data Quality &amp; Governance Framework</h2></div>
+      <p class="cp-desc">Validation rules enforced as blocking gates, with lineage and access control as code.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-06.1<br/>Validation Rules"] --> B["CP-06.2<br/>Blocking Gates"]
+  B --> C["CP-06.3<br/>Data Docs"]
+  B --> D["CP-06.4<br/>Alerting"]
+  E["CP-06.5<br/>Access Control"]:::gov -.-> B
+  F["CP-06.6<br/>Lineage Tracking"]:::gov -.-> C
+  classDef gov fill:#2a3346,stroke:#e2905a,stroke-width:1.5px,color:#e8edf3
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-06.4</span><span class="desc">Rule fatigue — too many low-value checks train the team to ignore alerts.</span></li>
+          <li><span class="node-code">CP-06.2</span><span class="desc">Blocking gates halt a legitimate pipeline on a false positive during a real edge case.</span></li>
+          <li><span class="node-code">CP-06.6</span><span class="desc">Lineage tooling falls out of sync with what the pipeline actually does.</span></li>
+          <li><span class="node-code">CP-06.5</span><span class="desc">Access-control-as-code drifts from actual IAM state without continuous reconciliation.</span></li>
+          <li><span class="node-code">CP-06.1</span><span class="desc">Checkbox compliance — checks pass technically but miss the regulation's actual intent.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-07">
+      <div class="cp-head"><span class="cp-code">CP-07</span><h2>Legacy-to-Cloud Migration Accelerator</h2></div>
+      <p class="cp-desc">CDC-based parallel run with reconciliation-as-code, ending in a scheduled, reversible cutover.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-07.1<br/>CDC Capture"] --> B["CP-07.2<br/>Parallel Dual-Write"]
+  B --> C["CP-07.3<br/>Reconciliation Engine"]
+  C --> D["CP-07.4<br/>Cutover Orchestration"]
+  D -.-> E["CP-07.5<br/>Rollback Plan"]
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-07.3</span><span class="desc">The reconciliation logic itself has bugs — giving false confidence that a migration is clean.</span></li>
+          <li><span class="node-code">CP-07.3</span><span class="desc">CDC lag means reconciliation is comparing two inconsistent snapshots in time.</span></li>
+          <li><span class="node-code">CP-07.2</span><span class="desc">Source-system quirks — triggers, computed columns — don't replicate correctly.</span></li>
+          <li><span class="node-code">CP-07.4</span><span class="desc">Cutover timing risk when stakeholders aren't actually aligned on the freeze window.</span></li>
+          <li><span class="node-code">CP-07.5</span><span class="desc">The rollback plan was never tested under real pressure, so it isn't really a safety net.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-08">
+      <div class="cp-head"><span class="cp-code">CP-08</span><h2>Self-Service BI &amp; Reporting Layer</h2></div>
+      <p class="cp-desc">A governed semantic model feeding BI tools directly, with row-level security and a distribution path.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-08.1<br/>Semantic Model"] --> B["CP-08.2<br/>BI Tool Connection"]
+  B --> C["CP-08.4<br/>Caching &amp; Extract"]
+  C --> D["CP-08.5<br/>Distribution"]
+  E["CP-08.3<br/>Row-Level Security"]:::gov -.-> B
+  classDef gov fill:#2a3346,stroke:#e2905a,stroke-width:1.5px,color:#e8edf3
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-08.1/.2</span><span class="desc">Metric-definition drift — the same KPI calculated differently because logic lives in the BI tool, not the semantic layer.</span></li>
+          <li><span class="node-code">CP-08.4</span><span class="desc">Extract refresh failures go unnoticed until a stakeholder complains the numbers look wrong.</span></li>
+          <li><span class="node-code">CP-08.3</span><span class="desc">Row-level security misconfiguration leaks data across tenant or customer boundaries.</span></li>
+          <li><span class="node-code">CP-08.5</span><span class="desc">Dashboard sprawl with no ownership model — stale reports get treated as current.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-09">
+      <div class="cp-head"><span class="cp-code">CP-09</span><h2>ML Feature Engineering &amp; Model-Serving Pipeline</h2></div>
+      <p class="cp-desc">Shared feature computation feeding both offline training and online inference, with drift feeding back in.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-09.1<br/>Feature Computation"] --> B["CP-09.2<br/>Offline Store"]
+  A --> C["CP-09.3<br/>Online Store"]
+  B --> D["CP-09.4<br/>Model Training"]
+  D --> E["CP-09.5<br/>Model Registry"]
+  E --> F["CP-09.6<br/>Inference Serving"]
+  C --> F
+  F --> G["CP-09.7<br/>Drift Monitoring"]
+  G -.-> A
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-09.1/.3</span><span class="desc">Training/serving skew — the same feature computed differently in the batch path vs. the real-time path.</span></li>
+          <li><span class="node-code">CP-09.3</span><span class="desc">Online feature-store staleness means predictions run against outdated values.</span></li>
+          <li><span class="node-code">CP-09.7</span><span class="desc">No drift monitoring lets the model degrade silently in production.</span></li>
+          <li><span class="node-code">CP-09.1</span><span class="desc">Label leakage inflates offline metrics that don't hold up once the model is live.</span></li>
+          <li><span class="node-code">CP-09.6/.1</span><span class="desc">Unmanaged feedback loops — model output shapes the next round of training data.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-10">
+      <div class="cp-head"><span class="cp-code">CP-10</span><h2>FinOps / Cost-Optimized Data Platform</h2></div>
+      <p class="cp-desc">Usage attribution driving workload segregation, auto-suspend policy, and anomaly-based cost alerting.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-10.1<br/>Usage Tagging"] --> B["CP-10.2<br/>Workload Segregation"]
+  B --> C["CP-10.3<br/>Auto-Suspend"]
+  B --> D["CP-10.4<br/>Query/Partition Optimization"]
+  A --> E["CP-10.5<br/>Cost Anomaly Alerting"]
+  E --> F["CP-10.6<br/>Chargeback/Showback"]
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-10.3</span><span class="desc">Over-aggressive auto-suspend causes cold-start latency, pushing users toward always-on workarounds that defeat the point.</span></li>
+          <li><span class="node-code">CP-10.1</span><span class="desc">Cost-attribution tags drift out of date as teams reorganize.</span></li>
+          <li><span class="node-code">CP-10.4</span><span class="desc">Optimization treated as a one-time project instead of a continuous practice, so costs creep back.</span></li>
+          <li><span class="node-code">CP-10.6</span><span class="desc">Compute cost gets chased while storage and retention cost grows unchecked in the background.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-11">
+      <div class="cp-head"><span class="cp-code">CP-11</span><h2>MDM / Master Reference Data Platform</h2></div>
+      <p class="cp-desc">Entity resolution and survivorship rules producing a golden record, with a stewardship loop for exceptions.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-11.1<br/>Source Ingestion"] --> B["CP-11.2<br/>Entity Resolution"]
+  B --> C["CP-11.3<br/>Survivorship Rules"]
+  C --> D["CP-11.4<br/>Golden Record Store"]
+  D --> E["CP-11.5<br/>Publish/Subscribe"]
+  D -.-> F["CP-11.6<br/>Stewardship Workflow"]
+  F -.-> C
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-11.3</span><span class="desc">Survivorship rules encode stale assumptions about which source to trust, and are never revisited.</span></li>
+          <li><span class="node-code">CP-11.2</span><span class="desc">Match/merge false positives incorrectly fuse two distinct real-world entities.</span></li>
+          <li><span class="node-code">CP-11.6</span><span class="desc">No feedback loop from stewards back into the matching logic — the same exception gets flagged forever.</span></li>
+          <li><span class="node-code">CP-11.5</span><span class="desc">Downstream systems cache the golden record and silently drift from the source of truth.</span></li>
+          <li><span class="node-code">CP-11.1</span><span class="desc">Governance overhead makes onboarding a new domain slower than the platform promised.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cp" id="cp-12">
+      <div class="cp-head"><span class="cp-code">CP-12</span><h2>LLM/RAG-Adjacent Data Foundation</h2></div>
+      <p class="cp-desc">Chunked, embedded content served through a retrieval layer into an orchestrated LLM call, with an eval loop closing it.</p>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  A["CP-12.1<br/>Ingestion"] --> B["CP-12.2<br/>Chunking &amp; Embedding"]
+  B --> C["CP-12.3<br/>Vector Store"]
+  C --> D["CP-12.4<br/>Retrieval Layer"]
+  D --> E["CP-12.5<br/>Orchestration/LLM Call"]
+  E --> F["CP-12.6<br/>Eval &amp; Feedback"]
+  F -.-> B
+        </pre>
+      </div>
+      <div class="failures">
+        <h3>Failure modes</h3>
+        <ul>
+          <li><span class="node-code">CP-12.2</span><span class="desc">Chunking strategy misaligned with real query patterns causes irrelevant retrieval.</span></li>
+          <li><span class="node-code">CP-12.3</span><span class="desc">Embedding model or version drift makes old vectors incompatible with new queries.</span></li>
+          <li><span class="node-code">CP-12.6</span><span class="desc">No eval framework means retrieval-quality regressions go undetected until a user notices.</span></li>
+          <li><span class="node-code">CP-12.4</span><span class="desc">Access control not propagated into the retrieval layer — a user could retrieve a chunk they shouldn't see.</span></li>
+          <li><span class="node-code">CP-12.5</span><span class="desc">Unbounded context windows or redundant embedding calls blow up cost and latency.</span></li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });
+</script>
+</body>
+</html>
