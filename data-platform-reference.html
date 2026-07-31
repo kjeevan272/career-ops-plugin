@@ -16,6 +16,9 @@
     --accent-ink: #ffffff;
     --warn: #b85c1f;
     --warn-bg: #fbeee1;
+    --good: #1a7a5e;
+    --good-bg: #e3f4ef;
+    --accent-bg: #e3f4f6;
     --code-bg: #eef3f5;
   }
   @media (prefers-color-scheme: dark) {
@@ -30,6 +33,9 @@
       --accent-ink: #0d1420;
       --warn: #e2905a;
       --warn-bg: #241c14;
+      --good: #4fd0a5;
+      --good-bg: #12261f;
+      --accent-bg: #132a30;
       --code-bg: #1c2635;
     }
   }
@@ -226,6 +232,117 @@
   }
   .failures .desc { color: var(--ink); }
 
+  .mitigations { margin-top: 18px; }
+  .mitigations h3 {
+    margin: 0 0 10px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--good);
+    font-weight: 700;
+  }
+  .mitigations ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .mitigations li {
+    display: grid;
+    grid-template-columns: 74px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    background: var(--good-bg);
+    border-left: 2.5px solid var(--good);
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px;
+    font-size: 13.5px;
+  }
+  .mitigations .node-code {
+    color: var(--good);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding-top: 1px;
+  }
+  .mitigations .desc { color: var(--ink); }
+
+  .fit-intro {
+    margin: 0 0 20px;
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 72ch;
+  }
+  .fit-item {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    background: var(--surface-2);
+    border-left: 2.5px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    margin-bottom: 8px;
+  }
+  .fit-item .req {
+    font-weight: 650;
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .fit-item .evidence { color: var(--ink); }
+  .fit-item .evidence .src {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .fit-item.gap { border-left-color: var(--warn); }
+
+  .fit-block h3 {
+    margin: 26px 0 10px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .fit-block h3:first-child { margin-top: 0; }
+
+  .tier {
+    display: inline-block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-right: 9px;
+  }
+  .tier-core { background: var(--good-bg); color: var(--good); }
+  .tier-adjacent { background: var(--accent-bg); color: var(--accent); }
+  .tier-na { background: var(--surface-2); color: var(--muted); }
+
+  .mini-cp { padding: 20px 0; border-top: 1px dashed var(--line); }
+  .mini-cp:first-of-type { border-top: none; padding-top: 4px; }
+  .mini-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .mini-head h4 {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 640;
+  }
+
+  @media (max-width: 860px) {
+    .fit-item { grid-template-columns: 1fr; }
+  }
+
   @media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; }
     nav.index {
@@ -240,6 +357,7 @@
     .idx-name { display: none; }
     main { padding: 24px 18px 60px; }
     .failures li { grid-template-columns: 1fr; }
+    .mitigations li { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -248,13 +366,15 @@
 <header class="masthead">
   <div class="eyebrow">Data Platform Reference · CP-01 – CP-12</div>
   <h1>Core Data Products — Component Diagrams &amp; Failure Modes</h1>
-  <p>Twelve foundational data-platform product types, broken into sub-components (CP-xx.y) with the failure modes that actually surface in production for each one.</p>
+  <p>Twelve foundational data-platform product types, broken into sub-components (CP-xx.y), with the failure modes that actually surface in production and the mitigation for each one.</p>
 </header>
 
 <div class="layout">
   <nav class="index" aria-label="Core product index">
     <div class="index-label">Jump to</div>
     <ul>
+      <li><a class="nav-link" href="#role-fit"><span class="idx-code">FIT</span><span class="idx-name">Parfumado Role Fit</span></a></li>
+      <li><a class="nav-link" href="#parfumado-map"><span class="idx-code">MAP</span><span class="idx-name">CP-01–12 Coverage</span></a></li>
       <li><a class="nav-link" href="#cp-01"><span class="idx-code">CP-01</span><span class="idx-name">EDW / Data Mart</span></a></li>
       <li><a class="nav-link" href="#cp-02"><span class="idx-code">CP-02</span><span class="idx-name">Cloud Data Lake</span></a></li>
       <li><a class="nav-link" href="#cp-03"><span class="idx-code">CP-03</span><span class="idx-name">Lakehouse</span></a></li>
@@ -271,6 +391,209 @@
   </nav>
 
   <main>
+
+    <section class="cp fit-block" id="role-fit">
+      <div class="cp-head"><span class="cp-code">FIT</span><h2>Role Fit — Analytics Engineer, Parfumado</h2></div>
+      <p class="fit-intro">Jeevan Kondasingu, 9 years as a Data Engineer at Global Research &amp; Innovation Centre (UK) Limited, across e-commerce, insurance, retail, and pharma clients. Every JD line below is matched to a specific outcome from those client projects. Where there's no direct precedent — subscription metrics, multi-channel marketing attribution, GA4/Segment, Fivetran specifically — it's named honestly rather than stretched, matching what the CV itself already discloses.</p>
+
+      <h3>Core requirements → evidence</h3>
+      <div class="fit-item">
+        <span class="req">Own &amp; improve data platform reliability/performance</span>
+        <span class="evidence">Designed Star and Snowflake schemas in Redshift and led serverless ETL with AWS Glue and PySpark processing 200M+ records/day.<span class="src">AVON — E-Commerce EDW</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Design/optimize models in Snowflake &amp; dbt</span>
+        <span class="evidence">Modeled Star/Snowflake schemas using dbt, SQL, and Python for analytical reporting; separately tuned Snowflake via clustering and micro-partition pruning, improving BI query runtimes by ~60%.<span class="src">ADMIRAL — Analytical DW · Retail Analytics — Snowflake Migration</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Build/manage ETL/ELT pipelines (Fivetran/Python)</span>
+        <span class="evidence">Built and maintained 40+ Airflow DAGs for ingestion, transformation, and validation at 99%+ production success rate; automated AWS Step Functions/Lambda workflows for a zero-downtime SQL Server-to-AWS migration. No direct Fivetran project — the closest precedent is Glue/Airflow-based ELT, the same category of managed pipeline orchestration.<span class="src">INFOSYS — Airflow / MWAA · INFOSYS — AWS Migration</span></span>
+      </div>
+      <div class="fit-item gap">
+        <span class="req">Model subscription/ecommerce metrics (MRR, churn, cohort, LTV, payback)</span>
+        <span class="evidence">No direct subscription-billing project. Closest transferable ground: MDM work establishing a single source of truth across 6+ enterprise datasets, which is the same identity-resolution discipline subscription-cohort modeling depends on. Worth naming this gap honestly rather than claiming direct experience.<span class="src">Honest gap — AVON MDM is the nearest adjacent skill</span></span>
+      </div>
+      <div class="fit-item gap">
+        <span class="req">Marketing attribution across Meta/Google/TikTok/affiliate</span>
+        <span class="evidence">No direct multi-channel attribution project. Adjacent ground: high-volume clickstream/behavioral event capture (Kafka/Kinesis) feeding Tableau analytics, which is the event-tracking half of an attribution stack, not the attribution logic itself.<span class="src">Honest gap — ADMIRAL clickstream is the nearest adjacent skill</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Integrate commerce, billing, CRM, and ad-platform data</span>
+        <span class="evidence">Established MDM principles for a single source of truth across 6+ enterprise datasets in an e-commerce EDW.<span class="src">AVON — E-Commerce EDW</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Translate business questions into dashboards</span>
+        <span class="evidence">Architected the data lake feeding AI/ML personalization models with self-service BI for 50+ users; built network analytics dashboards for region/country/plan-level reporting.<span class="src">Real Estate/CRM — Data Lake · TIREHUB — Network Analytics</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Monitor data quality, fix proactively</span>
+        <span class="evidence">Defined validation rules across 100+ datasets with Great Expectations, catching and fixing issues before they reached downstream teams; separately automated data-quality checks and anomaly detection in the analytical warehouse.<span class="src">PFIZER — Data Quality Monitoring · ADMIRAL — Analytical DW</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Cross-department collaboration (Marketing, Finance, Ops)</span>
+        <span class="evidence">Owned data platform, modeling, and pipeline reliability across international clients spanning e-commerce, insurance, retail, and pharma — each with its own stakeholder set to translate for.<span class="src">Global Research &amp; Innovation Centre, 2017–present</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Mentor a junior Data Analyst</span>
+        <span class="evidence">Mentors junior engineers through code review and shared standards as a standing part of the role.<span class="src">Global Research &amp; Innovation Centre, 2017–present</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Documentation / making data accessible</span>
+        <span class="evidence">Architected a data lake with self-service BI for 50+ users, and comfortable improving documentation to make data more accessible.<span class="src">Real Estate/CRM — Data Lake</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Bonus: cloud functions (Azure Functions)</span>
+        <span class="evidence">Direct AWS Lambda experience (Step Functions/Lambda orchestration for a zero-downtime migration) — same serverless-function model, different cloud vendor. A real, honest bridge, not a stretch.<span class="src">INFOSYS — AWS Migration</span></span>
+      </div>
+      <div class="fit-item">
+        <span class="req">Bonus: recommender systems / pipeline health</span>
+        <span class="evidence">Built a genuine AI/ML recommender system (scikit-learn, TensorFlow) recommending content across a customer-facing portal — not an adjacent concept, an actual recommender in production.<span class="src">Real Estate/CRM — AI-Driven Personalisation</span></span>
+      </div>
+
+      <h3>What makes this stand out beyond a typical AE candidate</h3>
+      <div class="mitigations">
+        <ul>
+          <li><span class="node-code">Scale</span><span class="desc">200M+ records/day through a hand-built EDW, and millions of clickstream events/day through Kafka/Kinesis — production scale, not a demo project.</span></li>
+          <li><span class="node-code">Breadth</span><span class="desc">Nine years across five industries (e-commerce, insurance, retail, pharma, tires) means the failure modes in this framework aren't theoretical — most have been hit directly in at least one client project.</span></li>
+          <li><span class="node-code">Depth</span><span class="desc">A real recommender system in production, not just a bonus-line concept — most Analytics Engineer candidates can talk about recommenders, few have shipped one.</span></li>
+          <li><span class="node-code">Rigor</span><span class="desc">Great Expectations across 100+ datasets and 40+ Airflow DAGs at 99%+ success rate — data-quality-as-code and pipeline reliability are demonstrated, not asserted.</span></li>
+          <li><span class="node-code">Credentials</span><span class="desc">SnowPro Core, AWS Data Engineer Associate, Databricks Associate Developer for Spark, AWS Solutions Architect Associate — direct Snowflake certification plus the surrounding cloud-data stack.</span></li>
+          <li><span class="node-code">Honesty</span><span class="desc">Subscription metrics and multi-channel attribution are named as gaps rather than claimed — the interviewer works in exactly that domain and will spot an overclaim immediately; better to show where the real overlap is and how fast it transfers.</span></li>
+        </ul>
+      </div>
+
+      <h3>Career → core data products built</h3>
+      <div class="diagram-panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#182231','primaryTextColor':'#e8edf3','primaryBorderColor':'#5ec8d8','lineColor':'#5ec8d8','fontFamily':'SFMono-Regular,Consolas,monospace','fontSize':'13px'}}}%%
+flowchart LR
+  AVN["AVON<br/>E-Commerce EDW"] -->|built| CP01["CP-01<br/>EDW"]
+  AVN -->|established| CP11["CP-11<br/>MDM"]
+  REC["Real Estate/CRM<br/>Personalisation"] -->|built| CP09["CP-09<br/>Recommender / ML Serving"]
+  REC -->|architected| CP08["CP-08<br/>Self-Service BI"]
+  ADM1["ADMIRAL<br/>Clickstream"] -->|captured| CP05["CP-05<br/>Streaming &amp; Events"]
+  ADM2["ADMIRAL<br/>Analytical DW"] -->|automated| CP06["CP-06<br/>Data Quality"]
+  RET["Retail Analytics<br/>Snowflake Migration"] -->|tuned| CP03["CP-03<br/>Lakehouse / Perf"]
+  INF["INFOSYS<br/>AWS Migration + Airflow"] -->|migrated| CP07["CP-07<br/>Migration Accelerator"]
+  PFZ["PFIZER<br/>Data Quality"] -->|monitored| CP06
+  TH["TIREHUB<br/>ML Pipeline + Dashboards"] -->|fed| CP09
+  TH -->|built| CP08
+        </pre>
+      </div>
+    </section>
+
+    <section class="cp fit-block" id="parfumado-map">
+      <div class="cp-head"><span class="cp-code">MAP</span><h2>CP-01–12 Coverage for Parfumado</h2></div>
+      <p class="fit-intro">Rated by relevance to Parfumado's actual stack (Snowflake, dbt, Fivetran/Python, GA4/Segment, Tableau) against real client project history, then worked into failure modes and mitigations scoped to Parfumado — grounded in what was actually built, with genuine gaps flagged rather than papered over.</p>
+
+      <h3>Relevance by product</h3>
+      <div class="fit-item"><span class="req"><span class="tier tier-core">Core</span>CP-01 EDW / Data Mart</span><span class="evidence">Built the AVON e-commerce EDW — Star/Snowflake schemas, semantic layer via views and stored procs — the same dimensional-modeling discipline Parfumado's warehouse needs.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-adjacent">Adjacent</span>CP-02 Cloud Data Lake</span><span class="evidence">Architected the data lake behind the Real Estate/CRM recommender project; AVON's Glue/PySpark serverless ETL is the closest bronze-zone precedent, though no Fivetran-specific project exists.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-adjacent">Adjacent</span>CP-03 Lakehouse (Databricks)</span><span class="evidence">Databricks Certified Associate Developer for Apache Spark, plus Snowflake performance tuning at Retail Analytics — strong adjacent depth even without a named Delta Lake project.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-na">N/A</span>CP-04 Salesforce Integration</span><span class="evidence">No Salesforce-specific extraction project — don't lead with this one.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-core">Core</span>CP-05 Streaming &amp; Events</span><span class="evidence">Captured user-activity events via Kafka and Kinesis at millions/day for ADMIRAL, stored and analyzed in Snowflake — the same event-pipeline mechanics GA4/Segment ingestion needs.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-core">Core</span>CP-06 Data Quality &amp; Governance</span><span class="evidence">Explicitly named in the JD. Direct precedent: Great Expectations validation across 100+ datasets at PFIZER, plus automated DQ checks in the ADMIRAL warehouse.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-core">Core</span>CP-07 Migration Accelerator</span><span class="evidence">Led the INFOSYS on-prem SQL Server → AWS migration with zero-downtime cutover, and a separate Oracle/Azure Blob → Snowflake migration — not named in the JD, but a strength worth surfacing if Parfumado's stack is still consolidating.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-core">Core</span>CP-08 Self-Service BI</span><span class="evidence">Tableau dashboards at ADMIRAL and TIREHUB, plus self-service BI for 50+ users on the Real Estate/CRM data lake.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-core">Core</span>CP-09 ML Feature/Serving</span><span class="evidence">Built an actual production recommender system (scikit-learn/TensorFlow) plus the TIREHUB feature-engineering ingestion layer — direct experience, not adjacent.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-adjacent">Adjacent</span>CP-10 FinOps</span><span class="evidence">The ~60% BI query-runtime improvement via Snowflake clustering/micro-partition pruning is a cost-adjacent result, though not framed as formal chargeback/showback work.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-core">Core</span>CP-11 MDM</span><span class="evidence">Established MDM principles for a single source of truth across 6+ enterprise datasets at AVON — the closest real precedent to Parfumado's commerce/billing/CRM/ads integration ask.</span></div>
+      <div class="fit-item"><span class="req"><span class="tier tier-na">N/A</span>CP-12 LLM/RAG Foundation</span><span class="evidence">Not mentioned in the JD and no direct project — don't lead with this one.</span></div>
+
+      <h3>Failure modes &amp; mitigations — Core tier, scoped to Parfumado</h3>
+
+      <div class="mini-cp">
+        <div class="mini-head"><span class="cp-code">CP-01</span><h4>Warehouse &amp; Modeling (Snowflake / dbt)</h4></div>
+        <div class="failures">
+          <ul>
+            <li><span class="node-code">Grain</span><span class="desc">Subscription order data modeled at the wrong grain — order-line vs. subscription-cycle — causes recurring-revenue numbers to double- or under-count renewals.</span></li>
+            <li><span class="node-code">Logic</span><span class="desc">Metric logic gets built ad hoc per analyst request, so Finance and Marketing dashboards quietly diverge on the same number.</span></li>
+          </ul>
+        </div>
+        <div class="mitigations">
+          <ul>
+            <li><span class="node-code">Grain</span><span class="desc">Define grain explicitly as a tested dbt model before any metric is built on it — the same star/snowflake-schema discipline used designing the AVON EDW in Redshift.</span></li>
+            <li><span class="node-code">Logic</span><span class="desc">Centralize metric logic in a semantic layer that Tableau reads from, mirroring the view/stored-proc semantic layer built at AVON.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mini-cp">
+        <div class="mini-head"><span class="cp-code">CP-05</span><h4>Event Streams (GA4 / Segment)</h4></div>
+        <div class="failures">
+          <ul>
+            <li><span class="node-code">Schema</span><span class="desc">GA4/Segment event schemas change without notice — a new app version, a new tracking plan — silently breaking downstream funnel and churn models.</span></li>
+            <li><span class="node-code">Volume</span><span class="desc">Event volume spikes around promotions or subscription-box launches overload ingestion and create customer-journey gaps exactly when they matter most.</span></li>
+          </ul>
+        </div>
+        <div class="mitigations">
+          <ul>
+            <li><span class="node-code">Schema</span><span class="desc">Treat every tracking-plan change as a breaking-change review with schema validation — the same discipline applied to the ADMIRAL clickstream pipeline at millions of events/day.</span></li>
+            <li><span class="node-code">Volume</span><span class="desc">Load-test ingestion ahead of known spikes rather than discovering the ceiling live, informed by running the Kafka/Kinesis pipeline that already handled this exact class of volume.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mini-cp">
+        <div class="mini-head"><span class="cp-code">CP-06</span><h4>Data Quality</h4></div>
+        <div class="failures">
+          <ul>
+            <li><span class="node-code">Billing</span><span class="desc">Failed or retried subscription payments get miscounted as both a charge and a churn event, corrupting MRR until Finance's numbers stop reconciling.</span></li>
+            <li><span class="node-code">Fatigue</span><span class="desc">Checks pass technically but nobody owns triaging failures, so alerts pile up and get ignored — the rule-fatigue pattern that lets real issues slip through.</span></li>
+          </ul>
+        </div>
+        <div class="mitigations">
+          <ul>
+            <li><span class="node-code">Billing</span><span class="desc">Build a specific reconciliation check for payment-retry states against churn logic — the same category of validation-rule design used across 100+ datasets with Great Expectations at PFIZER.</span></li>
+            <li><span class="node-code">Fatigue</span><span class="desc">Route data-quality alerts to a named owner with a defined SLA, not a shared channel — the same proactive-catch-before-downstream principle behind the PFIZER work.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mini-cp">
+        <div class="mini-head"><span class="cp-code">CP-08</span><h4>Dashboards (Tableau)</h4></div>
+        <div class="failures">
+          <ul>
+            <li><span class="node-code">Drift</span><span class="desc">Cohort/LTV calculations get rebuilt slightly differently in Tableau calculated fields versus the dbt layer, so two dashboards disagree on the same cohort.</span></li>
+            <li><span class="node-code">Sprawl</span><span class="desc">Dashboards proliferate per stakeholder request with no owner, and a stale one gets read as current right when a channel underperforms.</span></li>
+          </ul>
+        </div>
+        <div class="mitigations">
+          <ul>
+            <li><span class="node-code">Drift</span><span class="desc">Push all metric logic into dbt and keep Tableau strictly presentation-layer — the same self-service-BI-on-top-of-a-governed-lake pattern built for the Real Estate/CRM project's 50+ users.</span></li>
+            <li><span class="node-code">Sprawl</span><span class="desc">Apply an ownership and refresh-cadence standard to every published dashboard, extending the region/country/plan-level reporting discipline built at TIREHUB.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mini-cp">
+        <div class="mini-head"><span class="cp-code">CP-09</span><h4>Recommenders / ML Serving</h4></div>
+        <div class="failures">
+          <ul>
+            <li><span class="node-code">Skew</span><span class="desc">A "next scent" recommendation model trained offline behaves differently once served live against real browsing sessions — training/serving skew.</span></li>
+          </ul>
+        </div>
+        <div class="mitigations">
+          <ul>
+            <li><span class="node-code">Skew</span><span class="desc">Apply the same discipline behind the Real Estate/CRM recommender build — feature computation shared between the training path and the serving path, not two parallel implementations.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mini-cp">
+        <div class="mini-head"><span class="cp-code">CP-11</span><h4>Single Customer View (Commerce / Billing / CRM / Ads)</h4></div>
+        <div class="failures">
+          <ul>
+            <li><span class="node-code">Identity</span><span class="desc">The same customer exists as separate records across the commerce platform, subscription billing, CRM, and ad platforms, so churn and LTV get calculated on an incomplete view of any one customer.</span></li>
+          </ul>
+        </div>
+        <div class="mitigations">
+          <ul>
+            <li><span class="node-code">Identity</span><span class="desc">Build customer-identity resolution as an explicit modeling step, not an assumed join key — extending the MDM principles established across 6+ enterprise datasets at AVON to Parfumado's commerce/billing/CRM/ads sources.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
 
     <section class="cp" id="cp-01">
       <div class="cp-head"><span class="cp-code">CP-01</span><h2>Enterprise Data Warehouse (EDW) / Data Mart</h2></div>
@@ -294,6 +617,15 @@ flowchart LR
           <li><span class="node-code">CP-01.2</span><span class="desc">Grain mismatches between fact tables produce fan-out joins that look plausible but double-count.</span></li>
           <li><span class="node-code">CP-01.3</span><span class="desc">Business logic duplicated across dbt, the BI tool, and stored procs — three sources of truth for one metric.</span></li>
           <li><span class="node-code">CP-01.4/.5</span><span class="desc">Unbounded ad hoc query access with no workload management blows up warehouse cost.</span></li>
+        </ul>
+      </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-01.2</span><span class="desc">Pre-merge dbt tests asserting row counts and key uniqueness on every SCD-2 table, so history-breaking changes fail CI instead of surfacing as an unexplained number months later.</span></li>
+          <li><span class="node-code">CP-01.2</span><span class="desc">Document and test fact-table grain explicitly, with join-key cardinality checks required before a new fact table merges.</span></li>
+          <li><span class="node-code">CP-01.3</span><span class="desc">Consolidate metric logic into one semantic layer that every BI tool and report reads from — collapses three sources of truth into one.</span></li>
+          <li><span class="node-code">CP-01.4/.5</span><span class="desc">Workload management with query cost limits and a self-service tier separate from ad hoc — makes cost control a designed feature, not a policy memo.</span></li>
         </ul>
       </div>
     </section>
@@ -325,6 +657,16 @@ flowchart LR
           <li><span class="node-code">CP-02.5</span><span class="desc">Permission sprawl at the lake level — looser and harder to audit than warehouse RBAC.</span></li>
         </ul>
       </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-02.2</span><span class="desc">Scheduled compaction jobs with partition-size targets enforced at write time, not cleanup after the fact.</span></li>
+          <li><span class="node-code">CP-02.3</span><span class="desc">Schema contracts declared by writers and validated by the catalog at ingest, so evolution is negotiated, not discovered downstream.</span></li>
+          <li><span class="node-code">CP-02.5</span><span class="desc">Contract-based schema registration instead of crawler inference — the catalog reflects what was promised, not what was scraped.</span></li>
+          <li><span class="node-code">CP-02.2</span><span class="desc">Adopt a transactional table format (Delta/Iceberg/Hudi) for any zone with concurrent writers, closing the partial-write gap structurally.</span></li>
+          <li><span class="node-code">CP-02.5</span><span class="desc">Centralize lake access through a governed catalog layer instead of raw bucket policies, making permissions auditable in one place.</span></li>
+        </ul>
+      </div>
     </section>
 
     <section class="cp" id="cp-03">
@@ -352,6 +694,16 @@ flowchart LR
           <li><span class="node-code">CP-03.2</span><span class="desc">Unbounded time-travel retention quietly inflates storage cost.</span></li>
         </ul>
       </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-03.2</span><span class="desc">Automate VACUUM/OPTIMIZE as a scheduled platform job with tiered retention SLAs — turns table hygiene into a standing practice instead of a cleanup project.</span></li>
+          <li><span class="node-code">CP-03.2</span><span class="desc">Partition high-concurrency tables to isolate writers, or move to structured-streaming merges that serialize safely.</span></li>
+          <li><span class="node-code">CP-03.4</span><span class="desc">Right-size clusters from workload profiling before setting scaling policy, then revisit quarterly — proactive sizing beats reactive tuning after a bill shock.</span></li>
+          <li><span class="node-code">CP-03.3</span><span class="desc">Run the metastore migration as its own phased project with a parallel-validation period, not a weekend cutover.</span></li>
+          <li><span class="node-code">CP-03.2</span><span class="desc">Set explicit time-travel retention windows per table tier tied to actual audit/compliance need, not defaults.</span></li>
+        </ul>
+      </div>
     </section>
 
     <section class="cp" id="cp-04">
@@ -376,6 +728,16 @@ flowchart LR
           <li><span class="node-code">CP-04.2</span><span class="desc">Streaming API connection drops cause CDC replay or ordering issues.</span></li>
           <li><span class="node-code">CP-04.1/.2</span><span class="desc">Salesforce governor limits collide with concurrent extraction jobs.</span></li>
           <li><span class="node-code">CP-04.5</span><span class="desc">PII exposure risk once CRM data lands in a less-restricted analytical environment.</span></li>
+        </ul>
+      </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-04.1</span><span class="desc">Adaptive batch sizing with backoff and job scheduling that respects published API limits, so throughput is designed around the ceiling instead of discovered by hitting it.</span></li>
+          <li><span class="node-code">CP-04.4</span><span class="desc">Schema-diff step that fails the pipeline loudly on unexpected field changes — turns a silent failure into a visible, actionable one.</span></li>
+          <li><span class="node-code">CP-04.2</span><span class="desc">Idempotent CDC processing with checkpointed offsets so a dropped connection resumes cleanly instead of replaying or reordering.</span></li>
+          <li><span class="node-code">CP-04.1/.2</span><span class="desc">Central job scheduler that serializes or throttles concurrent Salesforce jobs against known governor limits.</span></li>
+          <li><span class="node-code">CP-04.5</span><span class="desc">PII classification and masking applied at landing, before the data reaches a broader-access analytical zone.</span></li>
         </ul>
       </div>
     </section>
@@ -405,6 +767,16 @@ flowchart LR
           <li><span class="node-code">CP-05.3</span><span class="desc">Schema-registry version mismatch breaks deserialization mid-stream.</span></li>
         </ul>
       </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-05.5</span><span class="desc">Lag-based SLOs with paging thresholds tied to business impact, not raw lag numbers — connects infra metrics to consequences a stakeholder actually cares about.</span></li>
+          <li><span class="node-code">CP-05.2</span><span class="desc">Partition-skew monitoring and key redesign built into the topic-onboarding checklist, so hot partitions are caught before launch.</span></li>
+          <li><span class="node-code">CP-05.3</span><span class="desc">Pick and document the delivery semantic per pipeline explicitly, with idempotent consumers as the default rather than an afterthought.</span></li>
+          <li><span class="node-code">CP-05.4</span><span class="desc">Circuit breaker plus a dead-letter path sized for burst capacity, so backpressure degrades gracefully instead of cascading.</span></li>
+          <li><span class="node-code">CP-05.3</span><span class="desc">Enforce backward-compatible schema evolution in the registry with CI checks on every producer change.</span></li>
+        </ul>
+      </div>
     </section>
 
     <section class="cp" id="cp-06">
@@ -432,6 +804,16 @@ flowchart LR
           <li><span class="node-code">CP-06.1</span><span class="desc">Checkbox compliance — checks pass technically but miss the regulation's actual intent.</span></li>
         </ul>
       </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-06.4</span><span class="desc">Tiered alerting (block/warn/log) with a quarterly rule-retirement review — fewer, higher-signal checks the team actually trusts.</span></li>
+          <li><span class="node-code">CP-06.2</span><span class="desc">Separate hard blockers from soft warnings, and give pipeline owners a documented override path with an audit trail instead of a hard stop.</span></li>
+          <li><span class="node-code">CP-06.6</span><span class="desc">Generate lineage from the pipeline's actual execution metadata, not a separately maintained diagram, so it can't drift.</span></li>
+          <li><span class="node-code">CP-06.5</span><span class="desc">Continuous reconciliation job that diffs access-control-as-code against live IAM state and flags divergence automatically.</span></li>
+          <li><span class="node-code">CP-06.1</span><span class="desc">Map every automated check to the specific regulatory clause it satisfies, reviewed with compliance — makes governance defensible, not just green.</span></li>
+        </ul>
+      </div>
     </section>
 
     <section class="cp" id="cp-07">
@@ -457,6 +839,16 @@ flowchart LR
           <li><span class="node-code">CP-07.5</span><span class="desc">The rollback plan was never tested under real pressure, so it isn't really a safety net.</span></li>
         </ul>
       </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-07.3</span><span class="desc">Test the reconciliation engine itself against known-mismatched fixtures before trusting it on real data — validate the validator.</span></li>
+          <li><span class="node-code">CP-07.3</span><span class="desc">Compare against watermarked, time-aligned snapshots rather than point-in-time pulls, so CDC lag doesn't masquerade as a data defect.</span></li>
+          <li><span class="node-code">CP-07.2</span><span class="desc">Inventory triggers and computed columns upfront and replicate their logic explicitly rather than assuming the pipeline captures them.</span></li>
+          <li><span class="node-code">CP-07.4</span><span class="desc">Freeze-window sign-off from every stakeholder team documented before scheduling cutover, not assumed from a meeting.</span></li>
+          <li><span class="node-code">CP-07.5</span><span class="desc">Run a full rollback game day under simulated failure before cutover — the single highest-leverage move for a lead-level migration story.</span></li>
+        </ul>
+      </div>
     </section>
 
     <section class="cp" id="cp-08">
@@ -480,6 +872,15 @@ flowchart LR
           <li><span class="node-code">CP-08.4</span><span class="desc">Extract refresh failures go unnoticed until a stakeholder complains the numbers look wrong.</span></li>
           <li><span class="node-code">CP-08.3</span><span class="desc">Row-level security misconfiguration leaks data across tenant or customer boundaries.</span></li>
           <li><span class="node-code">CP-08.5</span><span class="desc">Dashboard sprawl with no ownership model — stale reports get treated as current.</span></li>
+        </ul>
+      </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-08.1/.2</span><span class="desc">Push all metric logic into the semantic layer and lock down BI-tool-level calculated fields so there's one place logic can live.</span></li>
+          <li><span class="node-code">CP-08.4</span><span class="desc">Refresh-failure alerting wired to the same on-call rotation as pipeline failures, not left as a silent BI-tool log.</span></li>
+          <li><span class="node-code">CP-08.3</span><span class="desc">Automated row-level-security test suite that asserts tenant isolation on every semantic-model change before it ships.</span></li>
+          <li><span class="node-code">CP-08.5</span><span class="desc">Ownership and TTL metadata on every published dashboard, with automated deprecation for anything stale.</span></li>
         </ul>
       </div>
     </section>
@@ -511,6 +912,16 @@ flowchart LR
           <li><span class="node-code">CP-09.6/.1</span><span class="desc">Unmanaged feedback loops — model output shapes the next round of training data.</span></li>
         </ul>
       </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-09.1/.3</span><span class="desc">One shared feature-computation library used by both batch and real-time paths — the standard fix that separates real ML-platform experience from model-only experience.</span></li>
+          <li><span class="node-code">CP-09.3</span><span class="desc">Freshness SLOs on the online store with alerting when features exceed their staleness budget.</span></li>
+          <li><span class="node-code">CP-09.7</span><span class="desc">Automated drift detection wired directly to a retraining trigger, not a manual review cadence.</span></li>
+          <li><span class="node-code">CP-09.1</span><span class="desc">Point-in-time-correct feature joins enforced in the training pipeline to eliminate leakage structurally.</span></li>
+          <li><span class="node-code">CP-09.6/.1</span><span class="desc">Explicit feedback-loop audits — track what fraction of new training data was influenced by the model's own prior output, and cap it.</span></li>
+        </ul>
+      </div>
     </section>
 
     <section class="cp" id="cp-10">
@@ -534,6 +945,15 @@ flowchart LR
           <li><span class="node-code">CP-10.1</span><span class="desc">Cost-attribution tags drift out of date as teams reorganize.</span></li>
           <li><span class="node-code">CP-10.4</span><span class="desc">Optimization treated as a one-time project instead of a continuous practice, so costs creep back.</span></li>
           <li><span class="node-code">CP-10.6</span><span class="desc">Compute cost gets chased while storage and retention cost grows unchecked in the background.</span></li>
+        </ul>
+      </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-10.3</span><span class="desc">Tune suspend thresholds against measured cold-start cost per workload, not a single global default.</span></li>
+          <li><span class="node-code">CP-10.1</span><span class="desc">Automate tag reconciliation against the org chart/team registry on a scheduled basis instead of relying on manual tagging discipline.</span></li>
+          <li><span class="node-code">CP-10.4</span><span class="desc">Make cost governance a standing monthly showback review owned by a named team — a continuous practice, not a quarterly initiative.</span></li>
+          <li><span class="node-code">CP-10.6</span><span class="desc">Extend chargeback to storage and retention tiers, not just compute, so the full cost picture is visible.</span></li>
         </ul>
       </div>
     </section>
@@ -563,6 +983,16 @@ flowchart LR
           <li><span class="node-code">CP-11.1</span><span class="desc">Governance overhead makes onboarding a new domain slower than the platform promised.</span></li>
         </ul>
       </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-11.3</span><span class="desc">Scheduled survivorship-rule review tied to source-system changes, not left to run indefinitely on original assumptions.</span></li>
+          <li><span class="node-code">CP-11.2</span><span class="desc">Confidence-scored matching with a human-review threshold for borderline merges, instead of a hard auto-merge cutoff.</span></li>
+          <li><span class="node-code">CP-11.6</span><span class="desc">Route steward corrections back into the matching model as labeled training data, so the same exception isn't flagged forever.</span></li>
+          <li><span class="node-code">CP-11.5</span><span class="desc">Publish golden-record changes via event/webhook so downstream caches invalidate instead of silently drifting.</span></li>
+          <li><span class="node-code">CP-11.1</span><span class="desc">A lightweight onboarding template for new domains with governance defaults pre-configured, cutting ramp time without cutting rigor.</span></li>
+        </ul>
+      </div>
     </section>
 
     <section class="cp" id="cp-12">
@@ -588,6 +1018,16 @@ flowchart LR
           <li><span class="node-code">CP-12.6</span><span class="desc">No eval framework means retrieval-quality regressions go undetected until a user notices.</span></li>
           <li><span class="node-code">CP-12.4</span><span class="desc">Access control not propagated into the retrieval layer — a user could retrieve a chunk they shouldn't see.</span></li>
           <li><span class="node-code">CP-12.5</span><span class="desc">Unbounded context windows or redundant embedding calls blow up cost and latency.</span></li>
+        </ul>
+      </div>
+      <div class="mitigations">
+        <h3>Mitigation &amp; leadership signal</h3>
+        <ul>
+          <li><span class="node-code">CP-12.2</span><span class="desc">Derive chunking strategy from actual query logs, not document structure alone, and revisit it as query patterns shift.</span></li>
+          <li><span class="node-code">CP-12.3</span><span class="desc">Version-tag every embedding and re-embed on model upgrades as a tracked migration, not an incidental side effect.</span></li>
+          <li><span class="node-code">CP-12.6</span><span class="desc">Golden-query regression suite run on every retrieval or embedding change — currently the most differentiating thing you can point to in this space.</span></li>
+          <li><span class="node-code">CP-12.4</span><span class="desc">Enforce document/row-level access control at the vector-store query layer itself, not just at the source system.</span></li>
+          <li><span class="node-code">CP-12.5</span><span class="desc">Cache embeddings and cap context assembly per query with a token budget, monitored like any other cost driver.</span></li>
         </ul>
       </div>
     </section>
