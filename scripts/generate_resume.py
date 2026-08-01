@@ -8,6 +8,11 @@ file (profile summary, keyword picks, project order, cover letter prose) —
 this script does all the boilerplate HTML/CSS assembly locally, at zero
 LLM token cost.
 
+Template: matches the 2026-07-30 hand-authored house style (tinted header
+box, role-tag line, accent-colored bold keywords, bordered project titles,
+no separate long Skills-category dump) — see data/resumes/cv_*.html for the
+original hand-written examples this was reverse-engineered from.
+
 Usage:
     python scripts/generate_resume.py data/tailoring/<company>.yml
 
@@ -22,6 +27,8 @@ import yaml
 
 ROOT = Path(__file__).parent.parent
 MASTER = ROOT / "data" / "master_cv.yml"
+
+DEFAULT_COLORS = {"accent": "#26282b", "accent2": "#3aa6a6", "tint": "#eef2f2", "sub": "#444"}
 
 
 def load_yaml(path):
@@ -44,9 +51,9 @@ def bold_first_match(text, terms):
 
 
 def bold_all_matches(text, terms):
-    """Bold every literal occurrence of every term in `terms` (used for the
-    comma-separated Skills lines, where multiple bold spans per line is the
-    established convention — unlike narrative Experience bullets)."""
+    """Bold every literal occurrence of every term in `terms` (used for
+    comma-separated lines where multiple bold spans per line is fine —
+    unlike narrative Experience bullets)."""
     if not terms:
         return text
     for term in sorted(set(terms), key=len, reverse=True):
@@ -59,129 +66,73 @@ def bold_all_matches(text, terms):
     return text
 
 
-RESUME_CSS = """
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    @page {
-      size: A4;
-      margin: 18mm 20mm 18mm 20mm;
-    }
-
-    body {
+def resume_css(c):
+    return f"""
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    :root {{ --accent: {c['accent']}; --accent-2: {c['accent2']}; --tint: {c['tint']}; --ink: #1a1a1a; --sub: {c['sub']}; }}
+    @page {{ size: A4; margin: 14mm 18mm 14mm 18mm; }}
+    body {{
       font-family: Arial, Calibri, "Segoe UI", Helvetica, sans-serif;
-      font-size: 10.5pt;
-      line-height: 1.45;
-      color: #1a1a1a;
-      max-width: 170mm;
-      margin: 0 auto;
-      padding: 18mm 20mm;
-    }
-
-    @media print {
-      body { padding: 0; max-width: none; }
-      .page-break { page-break-before: always; }
-      a { color: #1a1a1a; text-decoration: none; }
-    }
-
-    .header {
-      border-bottom: 1.5pt solid #2a2a2a;
-      padding-bottom: 10pt;
-      margin-bottom: 4pt;
-    }
-
-    .header h1 {
-      font-size: 15pt;
-      font-weight: 700;
-      margin-bottom: 6pt;
-    }
-
-    .personal-grid {
-      display: grid;
-      grid-template-columns: 140pt 1fr;
-      gap: 3pt 8pt;
-      font-size: 10pt;
-      color: #333;
-    }
-
-    .personal-grid .label { font-weight: 600; }
-
-    h2 {
-      font-size: 11pt;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8pt;
-      border-bottom: 0.75pt solid #bbb;
-      padding-bottom: 3pt;
-      margin-top: 13pt;
-      margin-bottom: 7pt;
-    }
-
-    .entry { margin-bottom: 9pt; }
-
-    .entry-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 1pt;
-    }
-
-    .entry-header .title { font-weight: 700; font-size: 10.5pt; }
-    .entry-header .dates { font-size: 10pt; color: #555; white-space: nowrap; }
-
-    .entry .company { font-size: 10pt; color: #333; margin-bottom: 4pt; }
-
-    .entry .project-label {
-      font-size: 10pt;
-      font-weight: 600;
-      color: #444;
-      margin-top: 4pt;
-      margin-bottom: 2pt;
-    }
-
-    .entry ul { padding-left: 16pt; margin: 0; }
-    .entry li { font-size: 10.5pt; margin-bottom: 2pt; line-height: 1.4; }
-
-    .summary { font-size: 10.5pt; line-height: 1.5; margin-bottom: 6pt; }
-
-    .highlight-list { padding-left: 16pt; margin: 0; }
-    .highlight-list li { font-size: 10.5pt; margin-bottom: 2pt; line-height: 1.4; }
-
-    .competency-grid { width: 100%; border-collapse: collapse; margin-top: 2pt; }
-    .competency-grid td { font-size: 10.5pt; padding: 2pt 10pt 2pt 0; vertical-align: top; width: 33.33%; }
-
-    .skill-category { margin-bottom: 4pt; font-size: 10.5pt; }
-    .skill-category-name { font-weight: 600; }
-
-    .edu-entry { margin-bottom: 5pt; font-size: 10.5pt; }
-    .edu-entry .degree { font-weight: 600; }
-    .edu-entry .school { color: #333; }
-
-    .lang-entry { font-size: 10.5pt; margin-bottom: 2pt; }
-    .lang-entry .lang-name { font-weight: 600; }
-
-    .signature-block { margin-top: 24pt; font-size: 10pt; color: #333; }
+      font-size: 9.7pt; line-height: 1.45; color: var(--ink);
+      max-width: 174mm; margin: 0 auto; padding: 14mm 18mm;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }}
+    @media print {{ body {{ padding: 0; max-width: none; }} a {{ color: var(--accent); text-decoration: none; }} }}
+    strong {{ font-weight: 700; color: var(--accent-2); }}
+    .header {{ background: var(--tint); border-left: 3pt solid var(--accent); padding: 10pt 12pt; margin-bottom: 12pt; }}
+    .header h1 {{ font-size: 16pt; font-weight: 700; margin-bottom: 3pt; color: var(--accent); }}
+    .header .role-tag {{ font-size: 9.3pt; font-weight: 600; color: var(--accent-2); margin-bottom: 6pt; text-transform: uppercase; letter-spacing: 0.3pt; }}
+    .header .contact {{ font-size: 9.3pt; color: var(--sub); line-height: 1.6; }}
+    h2 {{
+      font-size: 10.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7pt;
+      color: var(--accent); border-bottom: 1.5pt solid var(--accent-2);
+      padding-bottom: 3pt; margin-top: 11pt; margin-bottom: 6pt;
+    }}
+    p {{ font-size: 9.7pt; margin-bottom: 6pt; line-height: 1.5; }}
+    .highlight-list {{ list-style: none; padding: 0; margin-bottom: 4pt; }}
+    .highlight-list li {{ font-size: 9.5pt; margin-bottom: 3pt; padding-left: 10pt; position: relative; }}
+    .highlight-list li::before {{ content: ""; position: absolute; left: 0; top: 6pt; width: 5pt; height: 5pt; background: var(--accent-2); border-radius: 50%; }}
+    .expertise-grid {{ width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 4pt; }}
+    .expertise-grid td {{ padding: 2.5pt 8pt 2.5pt 0; vertical-align: top; width: 33.33%; font-weight: 600; color: var(--accent); }}
+    .entry-intro {{ font-size: 9.5pt; margin-bottom: 6pt; color: var(--sub); }}
+    .role-block {{ margin-bottom: 4pt; }}
+    .role-header {{ display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1pt; }}
+    .role-header .title {{ font-weight: 700; font-size: 10.5pt; color: var(--accent); }}
+    .role-header .dates {{ font-size: 9.3pt; color: var(--sub); white-space: nowrap; }}
+    .role-header .company {{ font-size: 9.3pt; color: var(--sub); font-style: italic; }}
+    .project {{ margin-top: 7pt; margin-bottom: 2pt; }}
+    .project-title {{ font-size: 9.3pt; font-weight: 700; color: var(--accent-2); border-left: 2.5pt solid var(--accent-2); padding-left: 6pt; margin-bottom: 2pt; }}
+    .project ul {{ list-style: none; padding: 0; margin: 0 0 4pt 8pt; }}
+    .project li {{ font-size: 9.3pt; margin-bottom: 1.5pt; padding-left: 9pt; position: relative; line-height: 1.4; }}
+    .project li::before {{ content: ""; position: absolute; left: 0; top: 5.5pt; width: 4pt; height: 4pt; background: var(--accent); border-radius: 50%; }}
+    .edu-entry, .lang-entry, .cert-row {{ font-size: 9.7pt; margin-bottom: 3pt; }}
+    .edu-entry .degree, .lang-name {{ font-weight: 600; color: var(--accent); }}
 """
 
-COVER_LETTER_CSS = """
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    @page { size: A4; margin: 20mm 22mm 20mm 22mm; }
-    body {
+
+def cover_letter_css(c):
+    return f"""
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    :root {{ --accent: {c['accent']}; --accent-2: {c['accent2']}; --tint: {c['tint']}; --ink: #1a1a1a; --sub: {c['sub']}; }}
+    @page {{ size: A4; margin: 20mm 22mm 20mm 22mm; }}
+    body {{
       font-family: Arial, Calibri, "Segoe UI", Helvetica, sans-serif;
-      font-size: 11pt; line-height: 1.6; color: #1a1a1a;
+      font-size: 11pt; line-height: 1.55; color: var(--ink);
       max-width: 166mm; margin: 0 auto; padding: 20mm 22mm;
-    }
-    @media print { body { padding: 0; max-width: none; } a { color: #1a1a1a; text-decoration: none; } }
-    .sender { font-size: 10.5pt; color: #333; margin-bottom: 20pt; line-height: 1.5; }
-    .sender .name { font-size: 13pt; font-weight: 700; color: #1a1a1a; margin-bottom: 3pt; }
-    .recipient { font-size: 10.5pt; color: #1a1a1a; margin-bottom: 18pt; line-height: 1.5; }
-    .subject { font-size: 11pt; font-weight: 700; margin-bottom: 16pt; }
-    .salutation { margin-bottom: 12pt; font-size: 11pt; }
-    p { font-size: 11pt; margin-bottom: 12pt; line-height: 1.6; }
-    ul { margin: 0 0 14pt 0; padding-left: 18pt; }
-    li { font-size: 11pt; margin-bottom: 7pt; line-height: 1.5; }
-    .closing { margin-top: 20pt; font-size: 11pt; line-height: 1.6; }
-    .signature-gap { margin-top: 32pt; font-size: 11pt; }
-    .signature-gap .sig-name { font-weight: 700; }
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }}
+    @media print {{ body {{ padding: 0; max-width: none; }} a {{ color: var(--accent); text-decoration: none; }} }}
+    .sender {{ background: var(--tint); border-left: 3pt solid var(--accent); padding: 8pt 10pt; font-size: 10.5pt; color: var(--sub); margin-bottom: 18pt; }}
+    .sender strong {{ font-size: 14pt; font-weight: 700; color: var(--accent); display: block; margin-bottom: 4pt; }}
+    .date-line {{ margin-bottom: 18pt; font-size: 10.5pt; color: var(--sub); }}
+    .recipient {{ font-size: 10.5pt; color: var(--sub); margin-bottom: 18pt; line-height: 1.5; }}
+    .subject {{ font-weight: 700; font-size: 11.5pt; color: var(--accent); margin-bottom: 14pt; border-bottom: 1.5pt solid var(--accent-2); padding-bottom: 6pt; }}
+    p {{ margin-bottom: 10pt; font-size: 11pt; }}
+    strong {{ font-weight: 700; color: var(--accent-2); }}
+    ul.points {{ list-style: none; padding: 0; margin: 0 0 12pt 0; }}
+    ul.points li {{ font-size: 10.7pt; margin-bottom: 6pt; padding-left: 12pt; position: relative; line-height: 1.45; }}
+    ul.points li::before {{ content: ""; position: absolute; left: 0; top: 6pt; width: 5pt; height: 5pt; background: var(--accent-2); border-radius: 50%; }}
+    .signature-block {{ margin-top: 24pt; font-size: 10.5pt; color: var(--sub); border-top: 1pt solid var(--tint); padding-top: 10pt; }}
 """
 
 
@@ -191,14 +142,8 @@ def render_change_log(entries):
 
 
 def render_resume(master, tailoring):
+    colors = {**DEFAULT_COLORS, **tailoring.get("colors", {})}
     work_auth = master["work_auth"][tailoring.get("market", "eu")]
-
-    linkedin_row = ""
-    if master.get("linkedin"):
-        linkedin_row = (
-            f'      <span class="label">LinkedIn</span>'
-            f'               <span>{esc(master["linkedin"])}</span>\n'
-        )
 
     highlights = "\n".join(f"    <li>{h}</li>" for h in tailoring["highlights"])
 
@@ -213,36 +158,32 @@ def render_resume(master, tailoring):
     for key in tailoring["project_order"]:
         proj = master["projects"][key]
         bold_terms = tailoring.get("project_bold_terms", {}).get(key, [])
+        picks = tailoring.get("project_bullet_picks", {}).get(key, [0])
+        selected_bullets = [proj["bullets"][i] for i in picks]
         bullets = "\n".join(
             f"      <li>{bold_first_match(esc(b), bold_terms)}</li>"
-            for b in proj["bullets"]
+            for b in selected_bullets
         )
         projects_html += f"""
-    <div class="project-label">{esc(proj["label"])}</div>
-    <ul>
+    <div class="project">
+      <div class="project-title">{esc(proj["label"])}</div>
+      <ul>
 {bullets}
-    </ul>
+      </ul>
+    </div>
 """
 
-    certs_html = "\n".join(f'  <div class="edu-entry">{esc(c)}</div>' for c in master["certifications"])
-
-    skills_bold = tailoring.get("skills_bold_terms", [])
-    skills_html = ""
-    for cat in master["skills_categories"]:
-        items = bold_all_matches(esc(cat["items"]), skills_bold)
-        skills_html += (
-            f'  <div class="skill-category">\n'
-            f'    <span class="skill-category-name">{esc(cat["name"])}: </span>\n'
-            f"    {items}\n"
-            f"  </div>\n"
-        )
+    certs_html = "\n".join(f'  <div class="cert-row">{esc(c)}</div>' for c in master["certifications"])
 
     langs_html = "\n".join(
-        f'  <div class="lang-entry"><span class="lang-name">{esc(l["name"])}</span> — {esc(l["level"])}</div>'
+        f'  <div class="lang-entry"><span class="lang-name">{esc(l["name"])}</span> &mdash; {esc(l["level"])}</div>'
         for l in master["languages"]
     )
 
     change_log = render_change_log(tailoring["change_log"])
+    title_suffix = tailoring.get("title_suffix") or tailoring.get("cover_letter", {}).get("company_display", "")
+    entry_intro = tailoring.get("entry_intro", "")
+    additional = f"{work_auth}. {tailoring.get('additional', '')}".strip()
 
     return f"""<!DOCTYPE html>
 {change_log}
@@ -250,59 +191,56 @@ def render_resume(master, tailoring):
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{esc(master["name"])}</title>
-  <style>{RESUME_CSS}
+  <title>CV - {esc(master["name"])} - {esc(title_suffix)}</title>
+  <style>{resume_css(colors)}
   </style>
 </head>
 <body>
 
   <div class="header">
     <h1>{esc(master["name"])}</h1>
-    <div class="personal-grid">
-      <span class="label">Address</span>              <span>{esc(master["location"])}</span>
-      <span class="label">Phone</span>                 <span>{esc(master["phone"])}</span>
-      <span class="label">Email</span>                 <span>{esc(master["email"])}</span>
-{linkedin_row}      <span class="label">GitHub</span>                 <span>{esc(master["github"])}</span>
-      <span class="label">Work Authorization</span>   <span>{esc(work_auth)}</span>
+    <div class="role-tag">{tailoring.get("role_tag", "Data Engineer")}</div>
+    <div class="contact">
+      {esc(master["location"])} &nbsp;-&nbsp; {esc(master["phone"])} &nbsp;-&nbsp; {esc(master["email"])}<br>
+      {esc(master["linkedin"])} &nbsp;-&nbsp; {esc(master["github"])}
     </div>
   </div>
 
-  <h2>Profile</h2>
-  <div class="summary">
+  <h2>Professional Profile</h2>
+  <p>
     {tailoring["profile_summary"]}
-  </div>
+  </p>
   <ul class="highlight-list">
 {highlights}
   </ul>
 
   <h2>Area of Expertise</h2>
-  <table class="competency-grid">
+  <table class="expertise-grid">
 {grid_html}  </table>
 
-  <h2>Experience</h2>
+  <h2>Professional Experience</h2>
 
-  <div class="entry">
-    <div class="entry-header">
+  <div class="role-block">
+    <div class="role-header">
       <span class="title">{esc(master["current_role"]["title"])}</span>
       <span class="dates">{esc(master["current_role"]["dates"])}</span>
     </div>
-    <div class="company">{esc(master["current_role"]["company"])} | {esc(master["current_role"]["location"])}</div>
+    <div class="role-header"><span class="company">{esc(master["current_role"]["company"])} - {esc(master["current_role"]["location"])}</span></div>
+    <p class="entry-intro">{esc(entry_intro)}</p>
 {projects_html}
   </div>
 
   <h2>Education</h2>
-  <div class="edu-entry">
-    <span class="degree">{esc(master["education"]["degree"])}</span>
-    <span class="school"> {esc(master["education"]["detail"])}</span>
-  </div>
+  <div class="edu-entry"><span class="degree">{esc(master["education"]["degree"])}</span><br> {esc(master["education"]["detail"])}</div>
 
   <h2>Certifications</h2>
 {certs_html}
 
-  <h2>Skills</h2>
-{skills_html}
   <h2>Languages</h2>
 {langs_html}
+
+  <h2>Additional</h2>
+  <p>{additional}</p>
 
 </body>
 </html>
@@ -310,12 +248,14 @@ def render_resume(master, tailoring):
 
 
 def render_cover_letter(master, tailoring):
+    colors = {**DEFAULT_COLORS, **tailoring.get("colors", {})}
     cl = tailoring["cover_letter"]
     change_log = render_change_log(tailoring["change_log"])
 
-    recipient_lines = f'    <strong>{esc(cl["company_display"])}</strong><br>\n    {esc(cl.get("recipient_title", "Hiring Team"))}'
-    salutation = f'Dear {esc(cl["salutation_name"])},' if cl.get("salutation_name") else "Dear Hiring Team,"
+    home_city = master["location"].split(",")[0]
+    date_str = datetime.date.today().strftime("%d %B %Y").lstrip("0")
 
+    recipient_lines = f'    {esc(cl["company_display"])}<br>\n    {esc(cl.get("recipient_title", "Hiring Team"))}'
     bullets = "\n".join(f"    <li>{b}</li>" for b in cl["bullets"])
 
     return f"""<!DOCTYPE html>
@@ -325,15 +265,17 @@ def render_cover_letter(master, tailoring):
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cover Letter - {esc(master["name"])} - {esc(cl["company_display"])}</title>
-  <style>{COVER_LETTER_CSS}
+  <style>{cover_letter_css(colors)}
   </style>
 </head>
 <body>
 
   <div class="sender">
-    <div class="name">{esc(master["name"])}</div>
+    <strong>{esc(master["name"])}</strong>
     {esc(master["location"])} &nbsp;|&nbsp; {esc(master["phone"])} &nbsp;|&nbsp; {esc(master["email"])} &nbsp;|&nbsp; {esc(master["github"])}
   </div>
+
+  <div class="date-line">{esc(home_city)}, {date_str}</div>
 
   <div class="recipient">
 {recipient_lines}
@@ -341,13 +283,11 @@ def render_cover_letter(master, tailoring):
 
   <div class="subject">{esc(cl["subject"])}</div>
 
-  <div class="salutation">{salutation}</div>
-
   <p>
     {cl["opening"]}
   </p>
 
-  <ul>
+  <ul class="points">
 {bullets}
   </ul>
 
@@ -355,12 +295,10 @@ def render_cover_letter(master, tailoring):
     {cl["closing"]}
   </p>
 
-  <div class="closing">
-    Best regards,
-  </div>
-
-  <div class="signature-gap">
-    <span class="sig-name">{esc(master["name"])}</span>
+  <div class="signature-block">
+    Yours sincerely,<br><br><br>
+    ___________________________<br>
+    {esc(master["name"])}
   </div>
 
 </body>
