@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Pipeline — Jeevan Kumar Kondasingu</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f0f2f5;color:#1a1a1a;font-size:14px}
+    header{background:#1a1a2e;color:#fff;padding:18px 28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+    header h1{font-size:18px;font-weight:700}
+    header p{font-size:12px;color:#aab;margin-top:3px}
+    .stats{display:flex;gap:20px}
+    .stat .n{font-size:26px;font-weight:700;color:#7eb8f7}
+    .stat .l{font-size:11px;color:#99a;text-transform:uppercase}
+    .run-bar{background:#0f3460;border-bottom:1px solid #1a2a5a;padding:8px 28px;font-size:12px;color:#7eb8f7;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+    .run-bar strong{color:#fff}
+    .controls{background:#fff;border-bottom:1px solid #e0e0e0;padding:12px 28px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .controls input,.controls select{border:1px solid #ccc;border-radius:6px;padding:6px 10px;font-size:13px;outline:none}
+    .controls input{width:220px}
+    .controls input:focus,.controls select:focus{border-color:#4a90e2}
+    .count-badge{margin-left:auto;background:#e8f0fe;color:#1a73e8;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600}
+    .table-wrap{padding:16px 28px;overflow-x:auto}
+    .section-divider{padding:8px 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#666;border-bottom:2px solid #e0e0e0;margin-bottom:2px}
+    .section-divider.new-section{color:#1a73e8;border-color:#1a73e8}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    thead tr{background:#1a1a2e;color:#fff}
+    thead th{padding:10px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+    tbody tr{border-bottom:1px solid #f0f0f0;transition:background .12s}
+    tbody tr:hover{background:#f7f9ff}
+    tbody tr.applied{opacity:.4;background:#f9f9f9}
+    tbody tr.is-new{background:#f0f7ff}
+    tbody tr.is-new:hover{background:#e3f0ff}
+    tbody tr.separator-row td{background:#f8f8f8;padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;border-top:3px solid #ddd}
+    tbody tr:last-child{border-bottom:none}
+    td{padding:9px 12px;vertical-align:middle}
+    .score{display:inline-flex;align-items:center;justify-content:center;width:40px;height:24px;border-radius:12px;font-size:11px;font-weight:700;color:#fff}
+    .s9{background:#1a7f37}.s8{background:#2da44e}.s7{background:#5ba35b}.s6{background:#e3a008}.s5{background:#cf6d17}.s4{background:#9e6a03}
+    .company{font-weight:600}
+    .role{color:#333;max-width:280px;font-size:13px}
+    .badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap}
+    .bnew{background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+    .bnl-yes{background:#d1fae5;color:#065f46;font-size:10px;font-weight:700}
+    .bnl-no{background:#f3f4f6;color:#6b7280;font-size:10px;font-weight:600}
+    .br{background:#e6f4ea;color:#137333}.bo{background:#f1f3f4;color:#666}
+    .bli{background:#dbeafe;color:#1d4ed8}.bin{background:#fef3c7;color:#92400e}
+    .bgr{background:#f3e8ff;color:#6b21a8}.bba{background:#fce7f3;color:#9d174d}
+    .bgl{background:#d1fae5;color:#065f46}.bgo{background:#fef9c3;color:#713f12}
+    .bss{background:#ffe4e6;color:#9f1239}.blv{background:#ede9fe;color:#5b21b6}
+    .ban{background:#e0f2fe;color:#0369a1}
+    .bcc{background:#dcfce7;color:#166534}
+    .posted{font-size:11px;color:#888;white-space:nowrap}
+    .location{color:#555;font-size:12px;max-width:160px}
+    .btn-apply{display:inline-block;padding:5px 13px;background:#1a73e8;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-right:4px;transition:background .15s;white-space:nowrap}
+    .btn-apply:hover{background:#1557b0}
+    .btn-apply.linkedin{background:#0a66c2}.btn-apply.linkedin:hover{background:#084e96}
+    .btn-apply.indeed{background:#2164f3}.btn-apply.indeed:hover{background:#1a4fcf}
+    .btn-apply.greenhouse{background:#6b21a8}.btn-apply.greenhouse:hover{background:#581c87}
+    .btn-apply.ashby{background:#5b21b6}.btn-apply.ashby:hover{background:#4c1d95}
+    .btn-apply.lever{background:#5b21b6}.btn-apply.lever:hover{background:#4c1d95}
+    .btn-apply.arbeitsagentur{background:#9d174d}.btn-apply.arbeitsagentur:hover{background:#831843}
+    .btn-apply.arbeitnow{background:#0369a1}.btn-apply.arbeitnow:hover{background:#075985}
+    .btn-apply.stepstone{background:#9f1239}.btn-apply.stepstone:hover{background:#881337}
+    .btn-apply.google{background:#1a73e8}.btn-apply.google:hover{background:#1557b0}
+    .btn-apply.glassdoor{background:#065f46}.btn-apply.glassdoor:hover{background:#064e3b}
+    .btn-doc{display:inline-block;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;margin-right:4px;margin-bottom:3px;white-space:nowrap;transition:background .15s}
+    .btn-doc.resume{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+    .btn-doc.resume:hover{background:#d1fae5}
+    .btn-doc.cover{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+    .btn-doc.cover:hover{background:#dbeafe}
+    .btn-done{padding:5px 10px;border:1px solid #ccc;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#555;white-space:nowrap;transition:all .15s}
+    .btn-done:hover{background:#fef3c7;border-color:#e3a008;color:#92400e}
+    .btn-done.applied{background:#e6f4ea;border-color:#137333;color:#137333}
+    .no-results{text-align:center;padding:50px;color:#888;font-size:15px}
+    footer{text-align:center;padding:16px;color:#999;font-size:12px}
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Job Pipeline — Jeevan Kumar Kondasingu</h1>
+    <p>Senior Data Engineer · Germany · career-ops-plugin</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="n" id="stat-shown">30</div><div class="l">Showing</div></div>
+    <div class="stat"><div class="n" style="color:#7eb8f7">30</div><div class="l">New today</div></div>
+    <div class="stat"><div class="n" id="applied-stat">0</div><div class="l">Applied</div></div>
+    <div class="stat"><div class="n">13</div><div class="l">Remote</div></div>
+    <div class="stat"><div class="n">17</div><div class="l">Score 7+</div></div>
+  </div>
+</header>
+<div class="run-bar">
+  <span>Last run: <strong>2026-08-01 11:24</strong></span>
+  <span>New this run: <strong>26</strong></span>
+  <span>Total in pipeline: <strong>30</strong></span>
+</div>
+<div class="controls">
+  <input type="text" id="search" placeholder="Search role, company, location...">
+  <select id="filter-score">
+    <option value="0">All scores</option>
+    <option value="8">8+ Top match</option>
+    <option value="7">7+ Strong match</option>
+    <option value="6">6+ Good match</option>
+  </select>
+  <select id="filter-remote">
+    <option value="all">All locations</option>
+    <option value="remote">Remote only</option>
+    <option value="onsite">On-site only</option>
+  </select>
+  <select id="filter-source">
+    <option value="all">All sources</option>
+    <option value="linkedin">LinkedIn</option>
+    <option value="indeed">Indeed</option>
+    <option value="glassdoor">Glassdoor</option>
+    <option value="google">Google Jobs</option>
+    <option value="greenhouse">Greenhouse</option>
+    <option value="ashby">Ashby</option>
+    <option value="lever">Lever</option>
+    <option value="arbeitsagentur">Arbeitsagentur</option>
+    <option value="arbeitnow">Arbeitnow</option>
+    <option value="stepstone">StepStone</option>
+    <option value="company-crawl">Company Crawl</option>
+  </select>
+  <select id="filter-new">
+    <option value="all">All jobs</option>
+    <option value="new">New only</option>
+    <option value="old">Previous only</option>
+  </select>
+  <select id="filter-applied">
+    <option value="all">All statuses</option>
+    <option value="unapplied">Not applied</option>
+    <option value="applied">Applied only</option>
+  </select>
+  <select id="filter-nl-sponsor">
+    <option value="all">All (NL sponsor filter)</option>
+    <option value="sponsor">NL: IND-confirmed sponsor only</option>
+  </select>
+  <select id="filter-country">
+    <option value="all">All countries</option>
+  </select>
+  <span class="count-badge" id="visible-count">— jobs</span>
+</div>
+<div class="table-wrap">
+  <table id="jobs-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Score</th>
+        <th>Company</th>
+        <th>Role</th>
+        <th>Location</th>
+        <th>Posted</th>
+        <th>Type</th>
+        <th>Source</th>
+        <th>Docs</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="no-results" id="no-results" style="display:none">No jobs match your filters.</div>
+</div>
+<footer>career-ops-plugin · python-jobspy · LinkedIn &amp; Indeed Germany · Applied status saved in browser</footer>
+<script>
+const APPLIED_KEY = "career_ops_applied_v1";
+
+function loadApplied() {
+  try { return new Set(JSON.parse(localStorage.getItem(APPLIED_KEY) || "[]")); }
+  catch { return new Set(); }
+}
+function saveApplied(set) {
+  localStorage.setItem(APPLIED_KEY, JSON.stringify([...set]));
+}
+
+let appliedSet = loadApplied();
+
+function toggleApplied(url) {
+  if (appliedSet.has(url)) appliedSet.delete(url);
+  else appliedSet.add(url);
+  saveApplied(appliedSet);
+  updateAppliedStat();
+  applyFilters();
+}
+
+function updateAppliedStat() {
+  document.getElementById("applied-stat").textContent = appliedSet.size;
+}
+
+function scoreClass(s) {
+  return s>=9?"s9":s>=8?"s8":s>=7?"s7":s>=6?"s6":s>=5?"s5":"s4";
+}
+
+function srcBadge(s) {
+  if (s==="linkedin")      return ["bli","LinkedIn"];
+  if (s==="indeed")        return ["bin","Indeed"];
+  if (s==="glassdoor")     return ["bgl","Glassdoor"];
+  if (s==="google")        return ["bgo","Google Jobs"];
+  if (s==="greenhouse")    return ["bgr","Greenhouse"];
+  if (s==="ashby")         return ["blv","Ashby"];
+  if (s==="lever")         return ["blv","Lever"];
+  if (s==="arbeitsagentur") return ["bba","Arbeit"];
+  if (s==="arbeitnow")     return ["ban","Arbeitnow"];
+  if (s==="stepstone")     return ["bss","StepStone"];
+  if (s==="company-crawl") return ["bcc","Company Crawl"];
+  return ["bo", s];
+}
+
+// Jobs sorted: new first (by score desc), then old (by score desc)
+const ALL_JOBS = [
+  {n:1,score:8,company:"Planet",role:"Senior Data Engineer, Constellation Services",location:"Berlin, Berlin, Germany",country:"Germany",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4439037814",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:2,score:8,company:"Viaplay Group",role:"Senior Data Engineer",location:"Stockholm, Stockholm County, Sweden",country:"Sweden",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4446999039",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:3,score:8,company:"Xccelerated",role:"Part of Xebia|Data Engineer (Databricks)",location:"Utrecht, Netherlands",country:"Netherlands",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4435211218",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:false},
+  {n:4,score:8,company:"Accenture Poland",role:"Azure Data Engineer with Databricks (AI&Data)",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4437904977",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:5,score:8,company:"Diconium",role:"Data Engineer (all genders)",location:"Lisboa, Lisbon, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4441968837",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:6,score:8,company:"Tripledot Studios",role:"Data Engineer",location:"Barcelona, Catalonia, Spain",country:"Spain",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4447580772",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:7,score:8,company:"Capgemini",role:"Data Engineer (Snowflake,Cloud)",location:"Gdańsk, Pomorskie, Poland",country:"Poland",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4447533921",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:8,score:8,company:"IQVIA",role:"Senior Big Data Engineer",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4446983939",isNew:true,resumeDoc:"resumes/Jeevan-Kondasingu-IQVIA-LeadDataEngineer-PatientFinder.html",coverDoc:"cover-letters/Jeevan-Kondasingu-IQVIA-LeadDataEngineer-PatientFinder-CoverLetter.html",nlSponsor:null},
+  {n:9,score:8,company:"Alma Media",role:"Senior Data Engineer, Alma Insights",location:"Helsinki, Uusimaa, Finland",country:"Finland",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4433088390",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:10,score:8,company:"All European Careers",role:"Senior Data Engineer - Relocation to Brussels",location:"Madrid, Community of Madrid, Spain",country:"Spain",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4447123640",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:11,score:8,company:"Devoteam",role:"Distributed Cloud|Data Engineer",location:"Porto, Porto, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4389592826",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:12,score:8,company:"Software Mind",role:"Azure Senior Data Engineer",location:"Cracow, Małopolskie, Poland",country:"Poland",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4438685248",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:13,score:8,company:"Workday",role:"Principal Cybersecurity Data Engineer",location:"Dublin, D, IE",country:"Other",remote:true,source:"indeed",posted:"2026-07-31",dateFound:"2026-08-01",url:"https://ie.indeed.com/viewjob?jk=d54a15607c3361d4",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:14,score:7,company:"Nordea",role:"Senior Data Engineer in Default Management in SD High Risk and SD C&I",location:"Copenhagen, Capital Region of Denmark, Denmark",country:"Denmark",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4447714753",isNew:true,resumeDoc:"resumes/cv_data-engineer-senior-database-specialist_nordea.html",coverDoc:"cover-letters/cl_data-engineer-senior-database-specialist_nordea.html",nlSponsor:null},
+  {n:15,score:6,company:"Oliver James",role:"Oracle Data Engineer",location:"Brussels, Brussels Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4447139728",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:16,score:6,company:"TiTANS Consulting",role:"TiTANS Recruitment|TiTANS Werving & Selectie|TiTANS Interim Management|Azure Cloud Data Engineer",location:"Ghent, Flemish Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4447544228",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:17,score:5,company:"Amazon",role:"Business Intelligence Engineer, Data and Analytics",location:"Luxembourg, Luxembourg, Luxembourg",country:"Luxembourg",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4447571163",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:18,score:5,company:"Welvaart",role:"Data Analyst - ETL",location:"Lisbon, Lisbon, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4445561636",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:19,score:5,company:"TMC Luxembourg",role:"Data Scientist (M/F)",location:"Luxembourg, Luxembourg",country:"Luxembourg",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4445525541",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:20,score:5,company:"Amazon",role:"BI Engineer, EU 3P Expansion",location:"Madrid, Community of Madrid, Spain",country:"Spain",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4447558256",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:21,score:4,company:"Tieto",role:"Senior AI Cloud Architect Public 360°- Tieto Indtech (m/f/d)",location:"Stockholm, Stockholm County, Sweden",country:"Sweden",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4430461692",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:22,score:4,company:"GetYourGuide",role:"Senior Data Analyst, Customer Care Analytics",location:"Berlin, Germany",country:"Germany",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4420273968",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:23,score:4,company:"Verisure",role:"Business Intelligence Engineer",location:"Alicante, Valencian Community, Spain",country:"Spain",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-01",url:"https://www.linkedin.com/jobs/view/4445099852",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:24,score:4,company:"Workato",role:"Senior Data Scientist",location:"Berlin, BE, DE",country:"Other",remote:true,source:"indeed",posted:"2026-08-01",dateFound:"2026-08-01",url:"https://de.indeed.com/viewjob?jk=0a0fb707f93c5403",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:25,score:4,company:"1KOMMA5˚",role:"(Senior) Analytics Engineer (m/f/d)",location:"Home Office, DE",country:"Other",remote:true,source:"indeed",posted:"2026-07-31",dateFound:"2026-08-01",url:"https://de.indeed.com/viewjob?jk=7bbfc98cd92c8cb7",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:26,score:4,company:"Riverflex",role:"Data Architect and Data Modeller",location:"Amsterdam, NH, NL",country:"Other",remote:false,source:"indeed",posted:"2026-07-31",dateFound:"2026-08-01",url:"https://nl.indeed.com/viewjob?jk=2146d39497f2124f",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:false},
+  {n:27,score:8,company:"Xccelerated",role:"Part of Xebia|Data Engineer (Databricks)",location:"Utrecht, Netherlands",country:"Netherlands",remote:true,source:"linkedin",posted:"—",dateFound:"2026-07-31",url:"https://www.linkedin.com/jobs/view/4435211218",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:false},
+  {n:28,score:8,company:"Xccelerated",role:"Part of Xebia|Data Engineer (Databricks)",location:"Utrecht, Netherlands",country:"Netherlands",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-07-31",url:"https://www.linkedin.com/jobs/view/4435211218",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:false},
+  {n:29,score:8,company:"Xccelerated",role:"Part of Xebia|Data Engineer (Databricks)",location:"Utrecht, Netherlands",country:"Netherlands",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-07-31",url:"https://www.linkedin.com/jobs/view/4435211218",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:false},
+  {n:30,score:6,company:"TiTANS Consulting",role:"TiTANS Recruitment|TiTANS Werving & Selectie|TiTANS Interim Management|Azure Cloud Data Engineer",location:"Ghent, Flemish Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"—",dateFound:"2026-07-31",url:"https://www.linkedin.com/jobs/view/4447544228",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null}
+];
+
+function render(data) {
+  const tbody = document.getElementById("tbody");
+  document.getElementById("stat-shown").textContent = data.length;
+  if (!data.length) {
+    tbody.innerHTML = "";
+    document.getElementById("no-results").style.display = "block";
+    document.getElementById("jobs-table").style.display = "none";
+    return;
+  }
+  document.getElementById("no-results").style.display = "none";
+  document.getElementById("jobs-table").style.display = "table";
+
+  let html = "";
+  let shownNew = false, shownOld = false;
+
+  data.forEach((j, idx) => {
+    const isApplied = appliedSet.has(j.url);
+    const [sc, sl] = srcBadge(j.source);
+    const applyClass = j.source==="linkedin"?"linkedin":j.source==="indeed"?"indeed":j.source==="greenhouse"?"greenhouse":j.source==="arbeitsagentur"?"arbeitsagentur":"";
+
+    // Section dividers
+    if (j.isNew && !shownNew) {
+      shownNew = true;
+      html += `<tr class="separator-row"><td colspan="10">&#9733; New from latest run (30 jobs)</td></tr>`;
+    }
+    if (!j.isNew && !shownOld) {
+      shownOld = true;
+      html += `<tr class="separator-row"><td colspan="10">Previous runs (0 jobs)</td></tr>`;
+    }
+
+    html += `<tr class="${isApplied?"applied":""} ${j.isNew?"is-new":""}">
+      <td style="color:#999;font-size:11px">${idx+1}</td>
+      <td>
+        <span class="score ${scoreClass(j.score)}">${j.score}/10</span>
+        ${j.isNew?'<span class="badge bnew" style="margin-left:3px">NEW</span>':''}
+      </td>
+      <td class="company">${j.company}</td>
+      <td class="role">${j.role}</td>
+      <td class="location">${j.location}${j.nlSponsor===true?' <span class="badge bnl-yes" title="IND-recognized sponsor — can sponsor a work/highly-skilled-migrant visa">IND Sponsor ✓</span>':''}${j.nlSponsor===false?' <span class="badge bnl-no" title="Not found in the IND recognized-sponsor register">Not IND-listed</span>':''}</td>
+      <td class="posted">${j.posted}</td>
+      <td><span class="badge ${j.remote?"br":"bo"}">${j.remote?"Remote":"On-site"}</span></td>
+      <td><span class="badge ${sc}">${sl}</span></td>
+      <td>
+        ${j.resumeDoc?`<a class="btn-doc resume" href="${j.resumeDoc}" target="_blank" rel="noopener">Resume</a>`:''}
+        ${j.coverDoc?`<a class="btn-doc cover" href="${j.coverDoc}" target="_blank" rel="noopener">Cover Letter</a>`:''}
+        ${!j.resumeDoc && !j.coverDoc?'<span style="color:#bbb;font-size:11px">—</span>':''}
+      </td>
+      <td>
+        <a class="btn-apply ${applyClass}" href="${j.url}" target="_blank" rel="noopener">Apply</a>
+        <button class="btn-done ${isApplied?"applied":""}" onclick="toggleApplied('${j.url}')">${isApplied?"Applied ✓":"Mark Applied"}</button>
+      </td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+  document.getElementById("visible-count").textContent = `${data.length} job${data.length!==1?"s":""}`;
+}
+
+function applyFilters() {
+  const q        = document.getElementById("search").value.toLowerCase();
+  const minScore = parseInt(document.getElementById("filter-score").value) || 0;
+  const remFilt  = document.getElementById("filter-remote").value;
+  const srcFilt  = document.getElementById("filter-source").value;
+  const newFilt  = document.getElementById("filter-new").value;
+  const appFilt  = document.getElementById("filter-applied").value;
+  const nlFilt   = document.getElementById("filter-nl-sponsor").value;
+  const ctryFilt = document.getElementById("filter-country").value;
+
+  render(ALL_JOBS.filter(j => {
+    const text = (j.company + " " + j.role + " " + j.location).toLowerCase();
+    if (q && !text.includes(q)) return false;
+    if (j.score < minScore) return false;
+    if (remFilt === "remote" && !j.remote) return false;
+    if (remFilt === "onsite" && j.remote) return false;
+    if (srcFilt !== "all" && j.source !== srcFilt) return false;
+    if (newFilt === "new" && !j.isNew) return false;
+    if (newFilt === "old" && j.isNew) return false;
+    if (appFilt === "unapplied" && appliedSet.has(j.url)) return false;
+    if (appFilt === "applied" && !appliedSet.has(j.url)) return false;
+    if (nlFilt === "sponsor" && j.nlSponsor !== true) return false;
+    if (ctryFilt !== "all" && j.country !== ctryFilt) return false;
+    return true;
+  }));
+}
+
+function populateCountryFilter() {
+  const sel = document.getElementById("filter-country");
+  const counts = {};
+  ALL_JOBS.forEach(j => { counts[j.country] = (counts[j.country] || 0) + 1; });
+  Object.keys(counts).sort((a, b) => counts[b] - counts[a]).forEach(country => {
+    const opt = document.createElement("option");
+    opt.value = country;
+    opt.textContent = `${country} (${counts[country]})`;
+    sel.appendChild(opt);
+  });
+}
+
+updateAppliedStat();
+populateCountryFilter();
+["search","filter-score","filter-remote","filter-source","filter-new","filter-applied","filter-nl-sponsor","filter-country"]
+  .forEach(id => document.getElementById(id).addEventListener("input", applyFilters));
+applyFilters();
+</script>
+</body>
+</html>
