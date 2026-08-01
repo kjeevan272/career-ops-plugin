@@ -82,6 +82,33 @@ def patch_jobspy_country_parsing():
 
     Country.from_string = classmethod(_safe_from_string)
 
+
+def patch_jobspy_quiet_glassdoor():
+    """
+    Glassdoor is known-broken upstream (tightened anti-scraping — returns
+    HTTP 400 / "location not parsed" for every call; see the NOTE at the
+    jobspy: LinkedIn + Indeed + Glassdoor + Google Jobs section below). Its
+    ERROR-level logging is noise for a failure mode we already expect and
+    ignore, not a signal — left in the site list since it's harmless and
+    may silently start working again if/when jobspy patches it upstream.
+
+    A plain `logging.getLogger("JobSpy:Glassdoor").setLevel(...)` doesn't
+    stick: jobspy.scrape_jobs() calls set_logger_level(verbose) internally
+    on every invocation, which resets every "JobSpy:*" logger's level based
+    on the verbose param (default verbose=0 -> ERROR, i.e. still shows
+    ERRORs) — clobbering anything set beforehand. Wrap set_logger_level
+    itself so our Glassdoor override survives each call. Call once, after
+    `from jobspy import scrape_jobs`.
+    """
+    import jobspy
+    from jobspy.util import set_logger_level as original_set_logger_level
+
+    def _set_logger_level_and_quiet_glassdoor(verbose):
+        original_set_logger_level(verbose)
+        logging.getLogger("JobSpy:Glassdoor").setLevel(logging.CRITICAL)
+
+    jobspy.set_logger_level = _set_logger_level_and_quiet_glassdoor
+
 # ── dedup ──────────────────────────────────────────────────────────────────
 
 def normalize_title(title: str) -> str:
@@ -923,11 +950,7 @@ def main():
         print("ERROR: jobspy not installed. Run: pip install python-jobspy")
         sys.exit(1)
     patch_jobspy_country_parsing()
-    # Glassdoor is known-broken upstream (see NOTE below) — its ERROR-level
-    # logging is noise for a failure mode we already expect and ignore, not
-    # a signal. Quieted here rather than removed from the site list so it
-    # still silently starts working again if/when jobspy patches it.
-    logging.getLogger("JobSpy:Glassdoor").setLevel(logging.CRITICAL)
+    patch_jobspy_quiet_glassdoor()
 
     all_jobs = []
     seen_urls = set(tracked_urls)
