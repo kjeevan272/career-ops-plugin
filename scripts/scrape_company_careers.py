@@ -219,13 +219,26 @@ def make_job(company: str, title: str, date: str, link: str, source_url: str = "
     }
 
 
+def href_path_has_job_keyword(link: str) -> bool:
+    """Checks JOB_LINK_KEYWORDS against the link's path+query only, never its
+    hostname — plenty of real career pages live on domains that themselves
+    contain a keyword (careers.company.com, jobs.company.com,
+    *.myworkdayjobs.com, jobsearch.createyourowncareer.com, ...). Matching
+    against the full href made every single link on such a domain look like
+    a job link — including footer/nav/language-switcher links — so a page
+    with zero real listings could still pass as "found jobs"."""
+    from urllib.parse import urlsplit
+    parts = urlsplit(link.lower())
+    return any(keyword in f"{parts.path}?{parts.query}" for keyword in JOB_LINK_KEYWORDS)
+
+
 def is_probable_scraped_title(title: str, link: str) -> bool:
     normalized = clean_text(title).lower()
     if not normalized or normalized in NAV_TITLE_WORDS:
         return False
     if len(normalized) < 4:
         return False
-    return any(keyword in link.lower() for keyword in JOB_LINK_KEYWORDS) or re.search(r"\(m/?w/?d\)|m/w/d|f/m/d|w/m/d", normalized) is not None
+    return href_path_has_job_keyword(link) or re.search(r"\(m/?w/?d\)|m/w/d|f/m/d|w/m/d", normalized) is not None
 
 
 def dedupe_jobs(jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -378,7 +391,7 @@ def extract_jobs_from_html(html: str, candidate_url: str, fallback_company: str)
                 break
         if not career_link:
             for href in card_links:
-                if any(keyword in href.lower() for keyword in JOB_LINK_KEYWORDS):
+                if href_path_has_job_keyword(href):
                     resolved = urljoin(candidate_url, href)
                     if resolved.rstrip("/") != candidate_url.rstrip("/"):
                         career_link = resolved
@@ -491,6 +504,20 @@ def detect_ats(url: str) -> tuple[str, str] | None:
     match = re.search(r"([a-z0-9-]+)\.bamboohr\.com", lower)
     if match:
         return "bamboohr", match.group(1)
+    # Workday: {tenant}.{dc}.myworkdayjobs.com/[locale/]{site} — dc (wd1, wd502,
+    # ...) is part of the API host and varies per tenant, and the site slug is
+    # whatever the final path segment is (a locale prefix like en-GB may or may
+    # not precede it) — so both host and site travel together in the slug.
+    match = re.search(r"([a-z0-9-]+\.wd\d+\.myworkdayjobs\.com)(/[^?#]*)?", lower)
+    if match:
+        host = match.group(1)
+        tenant = host.split(".")[0]
+        segments = [seg for seg in (match.group(2) or "").split("/") if seg]
+        site = segments[-1] if segments else tenant
+        return "workday", f"{host}|{site}"
+    match = re.search(r"(?:careers|jobs)\.smartrecruiters\.com/([^/?#]+)", lower)
+    if match:
+        return "smartrecruiters", match.group(1)
     return None
 
 
@@ -510,18 +537,21 @@ def fetch_ats_jobs(platform: str, slug: str, company: str) -> List[Dict[str, Any
                 for job in jobs if job.get("title") and job.get("absolute_url")
             ]
         if platform == "ashby":
-            resp = requests.post(
-                "https://api.ashbyhq.com/posting-public/job-board",
-                json={"organizationHostedJobsPageName": slug}, headers=HEADERS, timeout=10,
-            )
+            # NOTE (2026-08-01): the old endpoint (POST /posting-public/job-board)
+            # returns 401 for every org now — Ashby moved this to a GET endpoint
+            # under a different path. Silent 401s meant every Ashby company fell
+            # through to the slow browser-render path and often timed out despite
+            # Ashby being "supported".
+            resp = requests.get(f"https://api.ashbyhq.com/posting-api/job-board/{slug}", headers=HEADERS, timeout=10)
             if resp.status_code != 200:
                 return []
-            jobs = resp.json().get("jobPostings", [])
+            jobs = resp.json().get("jobs", [])
             return [
                 make_job(
                     company, job.get("title", ""), (job.get("publishedAt") or "")[:10],
-                    job.get("externalLink") or f"https://jobs.ashbyhq.com/{slug}/{job.get('id', '')}",
-                    job.get("externalLink") or f"https://jobs.ashbyhq.com/{slug}",
+                    job.get("jobUrl") or job.get("applyUrl") or f"https://jobs.ashbyhq.com/{slug}/{job.get('id', '')}",
+                    job.get("jobUrl") or f"https://jobs.ashbyhq.com/{slug}",
+                    job.get("descriptionPlain") or "",
                 )
                 for job in jobs if job.get("title")
             ]
@@ -579,6 +609,57 @@ def fetch_ats_jobs(platform: str, slug: str, company: str) -> List[Dict[str, Any
                 )
                 for job in jobs if job.get("jobOpeningName") and job.get("id")
             ]
+        if platform == "workday":
+            # Workday's CXS API caps `limit` at 20/request (larger values 400)
+            # and has no keyword-relevance ordering, so paginate rather than
+            # truncate — otherwise a company with 100+ open reqs (common at
+            # this platform's typical enterprise customers) would silently
+            # drop most listings, including any data-role ones past position 20.
+            # Capped at 5 pages (100 jobs) to keep this bounded.
+            host, site = slug.split("|", 1)
+            tenant = host.split(".")[0]
+            api_url = f"https://{host}/wday/cxs/{tenant}/{site}/jobs"
+            postings = []
+            for offset in range(0, 100, 20):
+                resp = requests.post(
+                    api_url, headers=HEADERS,
+                    json={"appliedFacets": {}, "limit": 20, "offset": offset, "searchText": ""},
+                    timeout=10,
+                )
+                if resp.status_code != 200:
+                    break
+                page = resp.json().get("jobPostings", [])
+                if not page:
+                    break
+                postings.extend(page)
+                if len(page) < 20:
+                    break
+            return [
+                make_job(
+                    company, job.get("title", ""), "",
+                    f"https://{host}/{site}{job.get('externalPath', '')}",
+                    f"https://{host}/{site}{job.get('externalPath', '')}",
+                    job.get("locationsText", ""),
+                )
+                for job in postings if job.get("title") and job.get("externalPath")
+            ]
+        if platform == "smartrecruiters":
+            resp = requests.get(
+                f"https://api.smartrecruiters.com/v1/companies/{slug}/postings",
+                headers=HEADERS, params={"limit": 100}, timeout=10,
+            )
+            if resp.status_code != 200:
+                return []
+            postings = resp.json().get("content", [])
+            return [
+                make_job(
+                    company, job.get("name", ""), (job.get("releasedDate") or "")[:10],
+                    f"https://jobs.smartrecruiters.com/{slug}/{job.get('id', '')}",
+                    f"https://jobs.smartrecruiters.com/{slug}/{job.get('id', '')}",
+                    (job.get("location") or {}).get("fullLocation", ""),
+                )
+                for job in postings if job.get("name") and job.get("id")
+            ]
     except Exception:
         return []
     return []
@@ -599,6 +680,29 @@ def fetch_static_html(url: str) -> tuple[str, str]:
     resp = requests.get(url, headers=HEADERS, timeout=8, allow_redirects=True)
     resp.raise_for_status()
     return resp.url, resp.text
+
+
+def find_embedded_ats(html: str, base_url: str) -> tuple[str, str] | None:
+    """Some companies' own career page links OUT to a real ATS on a completely
+    different domain (e.g. a marketing-site /careers page with a "See open
+    roles" button pointing at careers.smartrecruiters.com/... or a Workday
+    tenant on a totally unrelated hostname) — build_candidate_urls only ever
+    guesses paths on the SAME domain as apply_link, so these are otherwise
+    unreachable no matter how many suffixes we try. Scan the page's own
+    outbound links for one of our supported ATS URL shapes (via the same
+    detect_ats patterns, so this can't false-positive on generic keywords —
+    only exact, distinctive ATS hostnames match) and jump straight there.
+    Bounded to the first match found; cheap (regex over already-fetched HTML,
+    no extra network fetch until the ATS API call itself)."""
+    from urllib.parse import urljoin, urlsplit
+    for href in re.findall(r'href=["\']([^"\']+)["\']', html):
+        resolved = urljoin(base_url, href)
+        if urlsplit(resolved).netloc.lower() == urlsplit(base_url).netloc.lower():
+            continue
+        ats = detect_ats(resolved)
+        if ats:
+            return ats
+    return None
 
 
 async def fetch_jobs_async(
@@ -623,6 +727,12 @@ async def fetch_jobs_async(
             jobs = extract_jobs_from_html(html, candidate_url, company)
             if jobs:
                 return jobs, candidate_url
+            embedded_ats = find_embedded_ats(html, final_url)
+            if embedded_ats:
+                platform, slug = embedded_ats
+                ats_jobs = await asyncio.to_thread(fetch_ats_jobs, platform, slug, company)
+                if ats_jobs:
+                    return ats_jobs, candidate_url
         except Exception:
             pass
 
