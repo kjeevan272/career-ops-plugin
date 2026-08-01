@@ -26,8 +26,8 @@ deactivate
 
 This launches `scrape_jobs.py` and `scrape_company_careers.py` at the same
 time, waits for both, merges their "what's new" state, and runs
-`generate_dashboard.py` automatically — `data/pipeline-dashboard.html` will
-show new roles from both sources.
+`generate_dashboard.py` automatically — `pipeline-dashboard.html` (repo root)
+will show new roles from both sources.
 
 Expect this to take as long as the slower of the two (typically the company
 crawl, ~3-10 min) — tell the user up front if they asked for a "quick" scan,

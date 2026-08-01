@@ -79,7 +79,15 @@ PAGE_IDLE_TIMEOUT_MS = 2500
 # for one company, which the whole batch then waits on. This bounds the
 # worst case per company regardless of how many candidates it has; a
 # skipped company just tries again (from the URL cache) next run.
-PER_COMPANY_TIMEOUT_S = 30
+PER_COMPANY_TIMEOUT_S = 60
+# Measured (2026-08-01): 118/120 companies sitting in timeout cooldown answered
+# a plain HTTP GET in under a couple seconds — the target sites weren't slow,
+# the scraper was chaining browser renders through every guessed candidate
+# (build_candidate_urls can produce up to ~10 with discovery URLs) at up to
+# ~PAGE_GOTO_TIMEOUT_MS + PAGE_IDLE_TIMEOUT_MS each. Capping browser attempts
+# means a company either resolves on its real URL (or a close guess) quickly,
+# or gives up well inside the budget instead of exhausting it on dead guesses.
+MAX_BROWSER_CANDIDATES = 3
 # A company that has never resolved to a working URL has nothing in
 # working_url_cache, so the "will retry from cache next run" message at the
 # timeout site doesn't actually apply to it — every run re-tries the same
@@ -363,6 +371,12 @@ def extract_jobs_from_html(html: str, candidate_url: str, fallback_company: str)
     jobs: List[Dict[str, Any]] = []
     card_selectors = (
         '[class*="job"]', '[data-testid*="job"]', 'article', 'li', '.result', '.card',
+        # Webflow CMS collection-list item — the generic wrapper class Webflow
+        # gives every dynamic-list row regardless of what the row itself is
+        # (job posting, blog post, team member, ...). Common on company sites
+        # built with Webflow (e.g. GetYourGuide's careers site); title/link
+        # heuristics below still have to do the work of confirming it's a job.
+        '.w-dyn-item',
     )
     for card in soup.select(", ".join(card_selectors)):
         title = ""
@@ -713,6 +727,8 @@ async def fetch_jobs_async(
     candidates = ([cached_url] if cached_url else []) + discovered_urls + build_candidate_urls(apply_link)
     candidates = list(dict.fromkeys(url for url in candidates if is_url(url)))
 
+    browser_attempts = 0
+
     for candidate_url in candidates:
         # Fast path: try a plain HTTP GET first, skip the browser entirely if it works.
         # Deliberately NOT gated by browser_semaphore — it never touches Chromium.
@@ -738,6 +754,14 @@ async def fetch_jobs_async(
 
         # Slow path: fall back to a real headless browser for JS-rendered pages.
         # Only this step competes for the smaller browser-page concurrency budget.
+        # Capped separately from the candidate list: most companies resolve on
+        # their real apply_link or its immediate redirect, and chaining browser
+        # renders through every /jobs, /careers, /karriere, /stellenangebote
+        # guess (each up to ~12.5s) is what was blowing PER_COMPANY_TIMEOUT_S for
+        # sites that respond instantly to a plain GET — see MAX_BROWSER_CANDIDATES.
+        if browser_attempts >= MAX_BROWSER_CANDIDATES:
+            continue
+        browser_attempts += 1
         try:
             async with browser_semaphore:
                 final_url, html = await render_html(context, candidate_url)

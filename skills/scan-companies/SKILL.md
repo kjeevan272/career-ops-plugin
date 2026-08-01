@@ -51,7 +51,7 @@ debugging.
 python scripts/generate_dashboard.py
 ```
 
-Results show up in `data/pipeline-dashboard.html` alongside job-board
+Results show up in `pipeline-dashboard.html` (repo root) alongside job-board
 matches — filter by `Source: company-crawl` to see just this crawler's hits.
 
 ## Step 4: Report & Offer Next Steps

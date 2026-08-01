@@ -75,8 +75,8 @@ Wired to skills: `scrape-jobs` (job-board only), `scan-companies` (crawler
 only), `full-scan` (both together) — say "scrape jobs", "scan companies", or
 "full scan".
 
-**Dashboard** (`data/pipeline-dashboard.html` — defaults to showing only the
-newest scrape run's new roles, sorted by date descending):
+**Dashboard** (`pipeline-dashboard.html`, repo root — defaults to showing only
+the newest scrape run's new roles, sorted by date descending):
 
 ```bash
 python scripts/generate_dashboard.py
@@ -84,7 +84,7 @@ python scripts/generate_dashboard.py --all                # full historical pipe
 python scripts/generate_dashboard.py --since=2026-07-01    # jobs found on/after a date
 python scripts/generate_dashboard.py --country=Germany --output=data/pipeline-dashboard-germany.html
 
-open data/pipeline-dashboard.html   # macOS — opens in your default browser
+open pipeline-dashboard.html   # macOS — opens in your default browser
 ```
 
 **Other standalone scripts:**

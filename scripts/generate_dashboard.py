@@ -1,5 +1,5 @@
 """
-Generate data/pipeline-dashboard.html from data/pipeline.md
+Generate pipeline-dashboard.html (repo root) from data/pipeline.md
 Defaults to showing ONLY the new roles from the latest scrape run (URL-matched
 against data/.last-run.json), sorted by date found descending.
 Run: python scripts/generate_dashboard.py
@@ -7,7 +7,7 @@ Flags:
   --all           show the full historical pipeline instead of new-only
   --since=YYYY-MM-DD   show jobs found on/after this date
   --country=NAME       only include jobs whose location contains this country name
-  --output=PATH        write to this path instead of data/pipeline-dashboard.html
+  --output=PATH        write to this path instead of pipeline-dashboard.html
 """
 
 import json
@@ -25,7 +25,9 @@ PIPELINE_PATH  = ROOT / "data" / "pipeline.md"
 LAST_RUN_PATH  = ROOT / "data" / ".last-run.json"
 APPS_PATH      = ROOT / "data" / "applications.md"
 PROFILE_PATH   = ROOT / "data" / "profile.yml"
-OUTPUT_PATH    = ROOT / "data" / "pipeline-dashboard.html"
+# Kept at repo root (tracked in git), not data/ (gitignored) — this is the
+# dashboard file the user actually opens/bookmarks.
+OUTPUT_PATH    = ROOT / "pipeline-dashboard.html"
 
 
 def parse_url(cell):
