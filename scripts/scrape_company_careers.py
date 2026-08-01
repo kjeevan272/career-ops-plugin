@@ -812,12 +812,16 @@ async def collect_jobs_for_source(
                 timeout=PER_COMPANY_TIMEOUT_S,
             )
         except asyncio.TimeoutError:
+            timeout_cache[company.lower()] = date.today().isoformat()
             print(f"Skipping {source.get('apply_link')}: exceeded {PER_COMPANY_TIMEOUT_S}s budget "
-                  f"(dead/slow candidate URLs) — will retry from cache next run")
+                  f"(dead/slow candidate URLs) — cooling down {TIMEOUT_COOLDOWN_DAYS}d before retrying")
             return [], [], ""
         except Exception as exc:
             print(f"Skipping {source.get('apply_link')}: {exc}")
             return [], [], ""
+
+    if winning_url:
+        timeout_cache.pop(company.lower(), None)
 
     return jobs, discovered, winning_url
 
@@ -906,6 +910,7 @@ async def run(input_path: Path = INPUT_LINK_FILE, output_path: Path = OUTPUT_JOB
     sources = load_sources(input_path)
     cached_links = load_discovered_cache()
     working_url_cache = load_working_url_cache()
+    timeout_cache = load_timeout_cache()
 
     asyncio.get_event_loop().set_exception_handler(_quiet_orphaned_playwright_errors)
 
@@ -925,7 +930,8 @@ async def run(input_path: Path = INPUT_LINK_FILE, output_path: Path = OUTPUT_JOB
         browser_semaphore = asyncio.Semaphore(MAX_CONCURRENT_PAGES)
 
         results = await asyncio.gather(
-            *(collect_jobs_for_source(context, source, http_semaphore, browser_semaphore, cached_links, working_url_cache)
+            *(collect_jobs_for_source(context, source, http_semaphore, browser_semaphore, cached_links,
+                                       working_url_cache, timeout_cache)
               for source in sources)
         )
 
@@ -945,6 +951,7 @@ async def run(input_path: Path = INPUT_LINK_FILE, output_path: Path = OUTPUT_JOB
         if company and winning_url:
             working_url_cache[company] = winning_url
     save_working_url_cache(working_url_cache)
+    save_timeout_cache(timeout_cache)
 
     matched_jobs = [job for job in dedupe_jobs(all_jobs) if is_match(job)]
     for job in matched_jobs:

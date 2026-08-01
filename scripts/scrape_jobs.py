@@ -33,6 +33,7 @@ import sys
 import re
 import csv
 import json
+import logging
 import xml.etree.ElementTree as ET
 import yaml
 import warnings
@@ -922,6 +923,11 @@ def main():
         print("ERROR: jobspy not installed. Run: pip install python-jobspy")
         sys.exit(1)
     patch_jobspy_country_parsing()
+    # Glassdoor is known-broken upstream (see NOTE below) — its ERROR-level
+    # logging is noise for a failure mode we already expect and ignore, not
+    # a signal. Quieted here rather than removed from the site list so it
+    # still silently starts working again if/when jobspy patches it.
+    logging.getLogger("JobSpy:Glassdoor").setLevel(logging.CRITICAL)
 
     all_jobs = []
     seen_urls = set(tracked_urls)
