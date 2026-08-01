@@ -48,6 +48,7 @@ INPUT_LINK_FILE = DATA_DIR / "company_career_pages.json"
 OUTPUT_JOBS_FILE = DATA_DIR / "scraped_company_jobs.json"
 DISCOVERED_CACHE_PATH = DATA_DIR / "company_career_discovered_cache.json"
 WORKING_URL_CACHE_PATH = DATA_DIR / "company_career_working_url_cache.json"
+TIMEOUT_CACHE_PATH = DATA_DIR / "company_career_timeout_cache.json"
 # Separate from scrape_jobs.py's data/.last-run.json so the two scrapers never
 # stomp each other's "what's new" state when run independently — full_scan.py
 # merges the two after running both together.
@@ -79,6 +80,14 @@ PAGE_IDLE_TIMEOUT_MS = 2500
 # worst case per company regardless of how many candidates it has; a
 # skipped company just tries again (from the URL cache) next run.
 PER_COMPANY_TIMEOUT_S = 30
+# A company that has never resolved to a working URL has nothing in
+# working_url_cache, so the "will retry from cache next run" message at the
+# timeout site doesn't actually apply to it — every run re-tries the same
+# dead/slow candidates and re-burns the full PER_COMPANY_TIMEOUT_S budget for
+# no gain (measured: 31/513 companies as of 2026-08, ~15+ wasted minutes/run).
+# TIMEOUT_CACHE_PATH records the last timeout per company so those can be
+# skipped outright until the cooldown elapses, instead of retried every run.
+TIMEOUT_COOLDOWN_DAYS = 3
 # Matches a daily run cadence — "recent" = since yesterday's run, not a
 # rolling 7-day window that mostly re-flags jobs already seen.
 RECENT_DAYS = 1
@@ -741,6 +750,32 @@ def save_working_url_cache(cache: Dict[str, str], path: Path = WORKING_URL_CACHE
         json.dump(cache, f, indent=2, ensure_ascii=False)
 
 
+def load_timeout_cache(path: Path = TIMEOUT_CACHE_PATH) -> Dict[str, str]:
+    if not path.exists():
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_timeout_cache(cache: Dict[str, str], path: Path = TIMEOUT_CACHE_PATH) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2, ensure_ascii=False)
+
+
+def in_timeout_cooldown(company: str, timeout_cache: Dict[str, str]) -> bool:
+    last_timeout = timeout_cache.get(company.lower())
+    if not last_timeout:
+        return False
+    try:
+        last_date = datetime.strptime(last_timeout, "%Y-%m-%d").date()
+    except ValueError:
+        return False
+    return date.today() - last_date < timedelta(days=TIMEOUT_COOLDOWN_DAYS)
+
+
 async def collect_jobs_for_source(
     context: BrowserContext,
     source: Dict[str, Any],
@@ -748,9 +783,19 @@ async def collect_jobs_for_source(
     browser_semaphore: asyncio.Semaphore,
     cached_links: Dict[str, List[str]],
     working_url_cache: Dict[str, str],
+    timeout_cache: Dict[str, str],
 ) -> tuple[List[Dict[str, Any]], List[str], str]:
     company = source.get("company", "")
     discovered: List[str] = []
+
+    # A company with no working_url_cache entry that timed out recently has
+    # nowhere to "retry from cache" — skip the attempt entirely instead of
+    # re-burning the full PER_COMPANY_TIMEOUT_S budget on the same dead
+    # candidates every run. Cleared automatically once the run below succeeds.
+    if not working_url_cache.get(company.lower()) and in_timeout_cooldown(company, timeout_cache):
+        print(f"Skipping {source.get('apply_link')}: timed out on {timeout_cache.get(company.lower())}, "
+              f"cooling down for {TIMEOUT_COOLDOWN_DAYS}d before retrying")
+        return [], [], ""
 
     async with http_semaphore:
         try:
