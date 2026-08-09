@@ -82,17 +82,17 @@
     <p>Senior Data Engineer · Germany · career-ops-plugin</p>
   </div>
   <div class="stats">
-    <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Showing</div></div>
-    <div class="stat"><div class="n" style="color:#7eb8f7">0</div><div class="l">New today</div></div>
+    <div class="stat"><div class="n" id="stat-shown">39</div><div class="l">Showing</div></div>
+    <div class="stat"><div class="n" style="color:#7eb8f7">39</div><div class="l">New today</div></div>
     <div class="stat"><div class="n" id="applied-stat">0</div><div class="l">Applied</div></div>
-    <div class="stat"><div class="n">0</div><div class="l">Remote</div></div>
-    <div class="stat"><div class="n">0</div><div class="l">Score 7+</div></div>
+    <div class="stat"><div class="n">14</div><div class="l">Remote</div></div>
+    <div class="stat"><div class="n">20</div><div class="l">Score 7+</div></div>
   </div>
 </header>
 <div class="run-bar">
-  <span>Last run: <strong>2026-08-09 08:39</strong></span>
-  <span>New this run: <strong>0</strong></span>
-  <span>Total in pipeline: <strong>0</strong></span>
+  <span>Last run: <strong>2026-08-09 08:44</strong></span>
+  <span>New this run: <strong>39</strong></span>
+  <span>Total in pipeline: <strong>39</strong></span>
 </div>
 <div class="controls">
   <input type="text" id="search" placeholder="Search role, company, location...">
@@ -207,7 +207,45 @@ function srcBadge(s) {
 
 // Jobs sorted: new first (by score desc), then old (by score desc)
 const ALL_JOBS = [
-
+  {n:1,score:8,company:"Warner Bros. Discovery",role:"Data Engineer (Snowflake)",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4338367555",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:2,score:8,company:"EPAM Systems",role:"Senior Data Engineer",location:"Madrid, Community of Madrid, Spain",country:"Spain",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4450939216",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:3,score:8,company:"Linde Europe",role:"Data Engineer (m/f/d)",location:"Porto, Porto, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4422993345",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:4,score:8,company:"TheFork",role:"Senior Data Engineer",location:"Barcelona, Catalonia, Spain",country:"Spain",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4439232774",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:5,score:8,company:"Devoteam",role:"Telecom Sector|Data Engineer (Azure & Microsoft Fabric)",location:"Lisbon, Lisbon, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4382290424",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:6,score:8,company:"RapidRatings",role:"Senior Data Engineer",location:"Dublin 2, County Dublin, Ireland",country:"Ireland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4451080430",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:7,score:8,company:"Kreditz",role:"Data Engineer",location:"Danderyd, Stockholm County, Sweden",country:"Sweden",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4374766866",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:8,score:8,company:"adesso Belgium",role:"Data Engineer",location:"Brussels, Brussels Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4383770921",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:9,score:8,company:"adesso Belgium",role:"Microsoft Fabric Data Engineer",location:"Brussels, Brussels Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4383786076",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:10,score:8,company:"DEMA",role:"Data Engineer (Senior/Staff)",location:"Stockholm, Stockholm County, Sweden",country:"Sweden",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4450906359",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:11,score:8,company:"adesso Belgium",role:"Databricks Data Engineer",location:"Brussels, Brussels Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4383786075",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:12,score:7,company:"Vuono Group",role:"Senior Data Architect",location:"Helsinki, Uusimaa, Finland",country:"Finland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4430631456",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:13,score:7,company:"EY",role:"Enterprise Data Architect",location:"Mannheim, Baden-Württemberg, Germany",country:"Germany",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4403206258",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:14,score:7,company:"Devoteam",role:"Data Architect",location:"Machelen, Flemish Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4330868957",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:15,score:7,company:"Version 1",role:"Data Architect - Microsoft Fabric",location:"Dublin, County Dublin, Ireland",country:"Ireland",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4421193293",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:16,score:7,company:"Fyld",role:"Data Architect",location:"Porto, Porto, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4451081152",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:17,score:7,company:"BNP Paribas CIB",role:"Senior Data Engineer",location:"Lisboa, Lisbon, Portugal",country:"Portugal",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4433519311",isNew:true,resumeDoc:"resumes/Jeevan-Kondasingu-BNPParibasCIB-DataEngineer-ProcessMining.html",coverDoc:"cover-letters/Jeevan-Kondasingu-BNPParibasCIB-DataEngineer-ProcessMining-CoverLetter.html",nlSponsor:null},
+  {n:18,score:7,company:"BNP Paribas CIB",role:"Data Engineer",location:"Lisboa, Lisbon, Portugal",country:"Portugal",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4433333583",isNew:true,resumeDoc:"resumes/Jeevan-Kondasingu-BNPParibasCIB-DataEngineer-ProcessMining.html",coverDoc:"cover-letters/Jeevan-Kondasingu-BNPParibasCIB-DataEngineer-ProcessMining-CoverLetter.html",nlSponsor:null},
+  {n:19,score:7,company:"Inetum",role:"Data Engineer (Regular)|Aerospace Industry|3-Month Project|ASAP Start",location:"Katowice, Śląskie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4442122971",isNew:true,resumeDoc:"resumes/cv_senior-data-engineer-microsoft-fabric_inetum.html",coverDoc:"cover-letters/cl_senior-data-engineer-microsoft-fabric_inetum.html",nlSponsor:null},
+  {n:20,score:7,company:"Ruby Labs",role:"Data Engineer (Marketing Systems)",location:"Eu, N, FR",country:"Other",remote:true,source:"indeed",posted:"2026-08-08",dateFound:"2026-08-09",url:"https://fr.indeed.com/viewjob?jk=9afe430680df1e36",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:21,score:6,company:"Bain & Company",role:"Staff Architect II, Software & Data Architecture",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4440941993",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:22,score:6,company:"Nordea",role:"Expert Data Engineer in Rating & Limit Management",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4411215916",isNew:true,resumeDoc:"resumes/cv_data-engineer-senior-database-specialist_nordea.html",coverDoc:"cover-letters/cl_data-engineer-senior-database-specialist_nordea.html",nlSponsor:null},
+  {n:23,score:6,company:"BEC Financial Technologies",role:"Data Engineer",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4441969352",isNew:true,resumeDoc:"resumes/cv_senior-data-engineer_bec-financial-technologies.html",coverDoc:"cover-letters/cl_senior-data-engineer_bec-financial-technologies.html",nlSponsor:null},
+  {n:24,score:5,company:"Stegra",role:"Data Engineer",location:"Stockholm, Stockholm County, Sweden",country:"Sweden",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4344531994",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:25,score:5,company:"Spotify",role:"Analytics Engineer II",location:"Stockholm, Stockholm County, Sweden",country:"Sweden",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4414539305",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:26,score:5,company:"Lighthouse",role:"Senior Analytics Engineer",location:"Ghent, Flemish Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4442138273",isNew:true,resumeDoc:"resumes/cv_senior-data-engineer-accommodation-facts_lighthouse.html",coverDoc:"cover-letters/cl_senior-data-engineer-accommodation-facts_lighthouse.html",nlSponsor:null},
+  {n:27,score:5,company:"SparkedInsights",role:"Senior Analytics Engineer (PowerBI)",location:"Lisbon, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4451086448",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:28,score:5,company:"Sundayy",role:"Data Engineer",location:"Hesse, Germany",country:"Germany",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4451076097",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:29,score:5,company:"Infineon Technologies",role:"Analytics Engineer (f/m/div)",location:"Munich, Bavaria, Germany",country:"Germany",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4451069765",isNew:true,resumeDoc:"resumes/Jeevan-Kondasingu-Infineon-SeniorDataEngineer.html",coverDoc:"cover-letters/Jeevan-Kondasingu-Infineon-SeniorDataEngineer-CoverLetter.html",nlSponsor:null},
+  {n:30,score:5,company:"Bunge",role:"Data Scientist",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4398527520",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:31,score:4,company:"Smartly",role:"Software Engineer, Large-Scale Data Systems",location:"Helsinki, Uusimaa, Finland",country:"Finland",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4424748668",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:32,score:4,company:"Energy Aspects",role:"Senior Software Engineer",location:"Paris, Île-de-France, France",country:"France",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4439087558",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:33,score:4,company:"Simon-Kucher",role:"Lead Software Engineer / Tech Lead (m/f/d)",location:"Berlin, Berlin, Germany",country:"Germany",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4410616584",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:34,score:4,company:"Bolt",role:"Senior Software Engineer, Data Platform Insights",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4433236378",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:35,score:4,company:"Statista",role:"Senior Software Engineer - GTM (m/f/d)",location:"Hamburg, Hamburg, Germany",country:"Germany",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4440688514",isNew:true,resumeDoc:"resumes/Jeevan-Kondasingu-Statista-DataEngineer.html",coverDoc:"cover-letters/Jeevan-Kondasingu-Statista-DataEngineer-CoverLetter.html",nlSponsor:null},
+  {n:36,score:4,company:"Brightstar Lottery",role:"Data Platform Engineer",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-09",url:"https://www.linkedin.com/jobs/view/4377953195",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:37,score:4,company:"Innogames",role:"InnoMaster Big Data Engineering - part-time Master\'s Program",location:"Hamburg",country:"Other",remote:false,source:"arbeitnow",posted:"2026-08-08",dateFound:"2026-08-09",url:"https://www.arbeitnow.com/jobs/companies/innogames/innomaster-big-data-engineering-part-time-masters-program-hamburg-384251",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:38,score:0,company:"Reddit",role:"Staff Machine Learning Engineer, Shopping Ads",location:"—",country:"Other",remote:true,source:"company-crawl",posted:"—",dateFound:"2026-08-09",url:"https://job-boards.greenhouse.io/reddit/jobs/8115838",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:39,score:0,company:"Merantix",role:"Platform Engineer (DevOps / DataOps)Job ID: REF98397Y",location:"—",country:"Other",remote:false,source:"company-crawl",posted:"—",dateFound:"2026-08-09",url:"https://careers.merantix-aicampus.com/companies/continental-ag-2/jobs/89234722-platform-engineer-devops-dataops-job-id-ref98397y#content",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null}
 ];
 
 function render(data) {
@@ -233,7 +271,7 @@ function render(data) {
     // Section dividers
     if (j.isNew && !shownNew) {
       shownNew = true;
-      html += `<tr class="separator-row"><td colspan="10">&#9733; New from latest run (0 jobs)</td></tr>`;
+      html += `<tr class="separator-row"><td colspan="10">&#9733; New from latest run (39 jobs)</td></tr>`;
     }
     if (!j.isNew && !shownOld) {
       shownOld = true;
