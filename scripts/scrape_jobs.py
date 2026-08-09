@@ -3,15 +3,19 @@ Job scraper for career-ops-plugin.
 Sources: LinkedIn · Indeed · Glassdoor · Google Jobs (via jobspy)
          Greenhouse · Ashby · Lever (ATS direct APIs)
          Bundesagentur für Arbeit · Arbeitnow · StepStone RSS
+         NL agency boards: Randstad · Olympia · Uitzendbureau · YoungCapital ·
+         Manpower · Luba · Tempo-Team · Jopportunity (see scrape_nl_agencies)
 Countries: set via profile.yml target.search_countries (default: ["Germany"]).
-           Bundesagentur/StepStone are Germany-only regardless of this list.
+           Bundesagentur/StepStone are Germany-only regardless of this list;
+           the NL agency boards are Netherlands-only regardless of this list.
 Titles: data engineering, analytics/BI, data science, and data-focused
         architecture/cloud/platform roles (see _STRICT_TITLE_PATTERNS) —
         matches the same breadth as scrape_company_careers.py.
 English-only: applied wherever a source provides description text (LinkedIn,
         Indeed/Google/Glassdoor, Greenhouse/Ashby/Lever, Arbeitnow, StepStone).
         Bundesagentur's list API returns no description text, so it isn't
-        filtered — see its docstring.
+        filtered — see its docstring. The NL agency boards deliberately skip
+        this filter too — see scrape_nl_agencies docstring.
 
 Modes (mutually exclusive; plain run with no flag = full/default):
   --quick   Fast single-term LinkedIn/EU-only pass. For a quick daily check.
@@ -247,6 +251,13 @@ _STRICT_TITLE_PATTERNS = (
     # architecture / data-focused cloud & platform
     "data architect", "cloud data engineer", "cloud platform engineer",
     "cloud architect", "platform engineer", "data platform",
+    # Dutch-language equivalents — needed for the NL staffing-agency sources
+    # (scrape_nl_agencies), whose listings are titled in Dutch even when the
+    # role itself doesn't require Dutch fluency, so those sources deliberately
+    # skip the is_english() filter and rely on title/skill matching instead.
+    "data analist", "data-analist", "databeheerder", "data specialist",
+    "data consultant", "data management specialist", "data solution architect",
+    "informatie architect",
 )
 
 # Generic engineering titles that DON'T name a data role at all — e.g. a
@@ -892,6 +903,485 @@ def scrape_stepstone_rss(profile, seen_urls, tracked_pairs):
     return results
 
 
+# ── NL staffing-agency job boards ───────────────────────────────────────────
+# Netherlands-only regardless of search_countries, mirroring how Bundesagentur/
+# StepStone are Germany-only above. All 8 sources were confirmed working via
+# plain HTTP (no browser) as of 2026-08-09 — 3 are server-rendered HTML pages,
+# 3 have an internal JSON API their own frontend calls (found via network
+# capture), and 2 (jopportunity, youngcapital) need the search actually
+# submitted (query string alone isn't enough / needs the right POST target).
+# Each of these sites' own "keyword search" is fuzzy/semantic rather than a
+# strict substring match — e.g. Manpower's API returns "Electromechanical
+# Service Technician" for query "data" — so results here lean on score_job's
+# title-pattern gate + skill-keyword scoring to do the real filtering, the
+# same as scrape_arbeitnow does against an unfiltered feed.
+#
+# Deliberately skips is_english() — see the NL-title additions to
+# _STRICT_TITLE_PATTERNS above. A hard Dutch-fluency requirement (if the JD
+# text states one) is still a candidate-side judgment call at review time, not
+# a scrape-time exclude, per project_job_search_scope.
+
+_NL_SEARCH_TERM = "data"
+
+
+def _looks_like_data_role(title: str) -> bool:
+    """Cheap pre-check (title only, no network) mirroring score_job's title
+    gate. Used to decide whether a detail-page fetch is worth the extra
+    request — see _fetch_nl_detail_text."""
+    title_lc = (title or "").lower()
+    return any(p in title_lc for p in _STRICT_TITLE_PATTERNS) or \
+           any(p in title_lc for p in _GENERIC_TITLE_PATTERNS)
+
+
+def _fetch_nl_detail_text(url: str, max_chars: int = 6000) -> str:
+    """Fetches a job detail page and returns its stripped plain text, for
+    sources whose search-results listing carries no description (so
+    score_job's skill-keyword matching would otherwise have nothing to work
+    with beyond the bare title). Only called for titles that already pass
+    _looks_like_data_role, to keep the extra-request count small — see call
+    sites in _scrape_nl_uitzendbureau / _scrape_nl_youngcapital /
+    _scrape_nl_tempoteam."""
+    try:
+        resp = requests.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"},
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            return ""
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for tag in soup(["script", "style", "nav", "header", "footer"]):
+            tag.decompose()
+        return soup.get_text(" ", strip=True)[:max_chars]
+    except Exception:
+        return ""
+
+
+def _finalize_nl_job(title, company, location, url, desc, posted, remote,
+                      source, profile, seen_urls, tracked_pairs):
+    """Shared dedup + exclude + score gate for all NL agency sources below.
+    Returns a pipeline-row dict, or None if the job should be dropped."""
+    title   = (title or "").strip()
+    company = (company or "").strip()
+    url     = (url or "").strip()
+    if not title or not url:
+        return None
+    if is_excluded(title):
+        return None
+
+    url_key = (url.lower(), normalize_title(title))
+    if url_key in seen_urls:
+        return None
+    seen_urls.add(url_key)
+
+    pair = (company.lower(), normalize_title(title))
+    if pair in tracked_pairs:
+        return None
+    tracked_pairs.add(pair)
+
+    score = score_job(title, desc or "", profile)
+    if score < 4:
+        return None
+
+    loc = location or "Netherlands"
+    return {
+        "title":       title,
+        "company":     company or "—",
+        "location":    loc,
+        "score":       score,
+        "job_url":     url,
+        "is_remote":   bool(remote) or "remote" in loc.lower(),
+        "source":      source,
+        "date_posted": posted or "—",
+    }
+
+
+def _scrape_nl_randstad(profile, seen_urls, tracked_pairs):
+    """Randstad.nl — server-rendered <article class="card item"> per job."""
+    results = []
+    try:
+        resp = requests.get(
+            "https://www.randstad.nl/vacatures",
+            params={"vakgebied": "ICT", "afstand": 50, "zoekterm": _NL_SEARCH_TERM},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            return results
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for art in soup.find_all("article", class_="card"):
+            link = art.find("a", href=True)
+            title_el = art.find("h2")
+            if not link or not title_el:
+                continue
+            url = "https://www.randstad.nl" + link["href"] if link["href"].startswith("/") else link["href"]
+            loc_el = art.find("span", class_="simplelist__item--text")
+            desc_el = art.find("div", class_="card__description")
+            job = _finalize_nl_job(
+                title=title_el.get_text(strip=True),
+                company="Randstad",
+                location=loc_el.get_text(strip=True) if loc_el else "Netherlands",
+                url=url,
+                desc=desc_el.get_text(" ", strip=True) if desc_el else "",
+                posted=None,
+                remote=False,
+                source="randstad-nl",
+                profile=profile, seen_urls=seen_urls, tracked_pairs=tracked_pairs,
+            )
+            if job:
+                results.append(job)
+    except Exception as e:
+        print(f"   [WARN] Randstad NL: {e}")
+    return results
+
+
+def _scrape_nl_olympia(profile, seen_urls, tracked_pairs):
+    """Olympia.nl — server-rendered <li class="card card-body"> per job."""
+    results = []
+    try:
+        resp = requests.get(
+            "https://www.olympia.nl/vacatures/",
+            params={"zoekterm": _NL_SEARCH_TERM},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            return results
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for h3 in soup.find_all("h3", class_="mb-xxs"):
+            link = h3.find("a", href=True)
+            if not link:
+                continue
+            card = h3.find_parent("li")
+            url = "https://www.olympia.nl" + link["href"] if link["href"].startswith("/") else link["href"]
+            img = card.find("img", alt=True) if card else None
+            loc = None
+            if card:
+                for li in card.find_all("li"):
+                    if li.find("strong") and "Locatie" in li.find("strong").get_text():
+                        loc = li.get_text(strip=True).replace("Locatie:", "").strip()
+                        break
+            desc_el = card.find("p", class_="no-margin") if card else None
+            job = _finalize_nl_job(
+                title=link.get_text(strip=True),
+                company=img["alt"].strip() if img else "—",
+                location=loc or "Netherlands",
+                url=url,
+                desc=desc_el.get_text(" ", strip=True) if desc_el else "",
+                posted=None,
+                remote=False,
+                source="olympia-nl",
+                profile=profile, seen_urls=seen_urls, tracked_pairs=tracked_pairs,
+            )
+            if job:
+                results.append(job)
+    except Exception as e:
+        print(f"   [WARN] Olympia NL: {e}")
+    return results
+
+
+def _scrape_nl_uitzendbureau(profile, seen_urls, tracked_pairs):
+    """Uitzendbureau.nl — Nuxt SSR; real recruiter/location shown per card."""
+    results = []
+    try:
+        resp = requests.get(
+            "https://www.uitzendbureau.nl/vacature",
+            params={"s": _NL_SEARCH_TERM},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            return results
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for link in soup.find_all("a", class_="job-search__result-list__result__title", href=True):
+            title = link.get_text(strip=True)
+            card = link.find_parent("div", class_="job-search__result-list__result")
+            company_el = card.find("span", class_="cro-recruiter-name") if card else None
+            loc_el = card.find("span", class_="cro-job-location") if card else None
+            # Listing cards carry no description text — fetch the detail page
+            # only for titles that already look like a data role, so score_job
+            # has real skill-keyword text to score against (see
+            # _fetch_nl_detail_text docstring).
+            desc = _fetch_nl_detail_text(link["href"]) if _looks_like_data_role(title) else ""
+            job = _finalize_nl_job(
+                title=title,
+                company=company_el.get_text(strip=True) if company_el else "—",
+                location=loc_el.get_text(strip=True) if loc_el else "Netherlands",
+                url=link["href"],
+                desc=desc,
+                posted=None,
+                remote=False,
+                source="uitzendbureau-nl",
+                profile=profile, seen_urls=seen_urls, tracked_pairs=tracked_pairs,
+            )
+            if job:
+                results.append(job)
+    except Exception as e:
+        print(f"   [WARN] Uitzendbureau NL: {e}")
+    return results
+
+
+def _scrape_nl_youngcapital(profile, seen_urls, tracked_pairs):
+    """YoungCapital.nl — job cards carry data-job-opening-* attrs directly."""
+    results = []
+    try:
+        resp = requests.get(
+            "https://www.youngcapital.nl/vacatures",
+            params={"search[keywords_scope]": _NL_SEARCH_TERM},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            return results
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for a in soup.find_all("a", class_="job-opening__item", href=True):
+            loc_span = a.find("span", class_="nyc-icon-location")
+            loc = None
+            if loc_span:
+                icon_row = loc_span.find_parent("div", class_="flex-row")
+                spans = icon_row.find_all("span") if icon_row else []
+                loc = spans[-1].get_text(strip=True) if spans else None
+            url = a["href"]
+            if url.startswith("/"):
+                url = "https://www.youngcapital.nl" + url
+            title = a.get("data-job-opening-title") or a.get_text(strip=True)
+            # Listing cards carry no description text — see uitzendbureau's
+            # identical comment above.
+            desc = _fetch_nl_detail_text(url) if _looks_like_data_role(title) else ""
+            job = _finalize_nl_job(
+                title=title,
+                company=a.get("data-job-opening-item-brand") or "—",
+                location=loc or "Netherlands",
+                url=url,
+                desc=desc,
+                posted=None,
+                remote=False,
+                source="youngcapital-nl",
+                profile=profile, seen_urls=seen_urls, tracked_pairs=tracked_pairs,
+            )
+            if job:
+                results.append(job)
+    except Exception as e:
+        print(f"   [WARN] YoungCapital NL: {e}")
+    return results
+
+
+def _scrape_nl_manpower(profile, seen_urls, tracked_pairs):
+    """Manpower.nl — internal JSON API (POST), found via network capture.
+    NOTE: searchKeyword is honored loosely/semantically by their backend, not
+    as a strict filter — real-world observed result for "data" included
+    "Electromechanical Service Technician". score_job's title gate is what
+    actually narrows this down, same as the rest of this module."""
+    results = []
+    try:
+        resp = requests.post(
+            "https://www.manpower.nl/api/services/Jobs/searchjobs",
+            json={"filter": {
+                "page": "1", "searchKeyword": _NL_SEARCH_TERM, "offset": 0,
+                "totalCount": 0, "limit": 50, "searchkeyword": _NL_SEARCH_TERM,
+                "haslocation": False, "language": "en",
+            }},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)",
+                     "Content-Type": "application/json"},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            return results
+        for j in resp.json().get("jobsItems", []):
+            title = j.get("jobTitle", "")
+            url = j.get("jobURL", "")
+            if url.startswith("/"):
+                url = "https://www.manpower.nl" + url
+            posted = (j.get("publishfromDate") or "")[:10] or None
+            job = _finalize_nl_job(
+                title=title,
+                company=j.get("companyName") or "Manpower",
+                location=j.get("jobLocation") or "Netherlands",
+                url=url,
+                desc=j.get("publicDescription", "") or j.get("openingParagraph", ""),
+                posted=posted,
+                remote=False,
+                source="manpower-nl",
+                profile=profile, seen_urls=seen_urls, tracked_pairs=tracked_pairs,
+            )
+            if job:
+                results.append(job)
+    except Exception as e:
+        print(f"   [WARN] Manpower NL: {e}")
+    return results
+
+
+def _scrape_nl_luba(profile, seen_urls, tracked_pairs):
+    """Luba.nl — internal JSON API on jobsite-luba.recruitnow.nl (POST),
+    found via network capture."""
+    results = []
+    try:
+        resp = requests.post(
+            "https://jobsite-luba.recruitnow.nl/api/vacancies/search",
+            json={
+                "Facets": [], "Filters": [], "Ranges": [],
+                "SearchQuery": _NL_SEARCH_TERM,
+                "Pagination": {"Size": 50, "From": 0},
+                "Location": {"Distance": 25, "Lat": 0, "Lon": 0},
+                "Sorting": {"Sort": "Published", "Direction": "Descending"},
+            },
+            headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)",
+                     "Content-Type": "application/json",
+                     "Origin": "https://www.luba.nl",
+                     "Referer": f"https://www.luba.nl/vacature?query={_NL_SEARCH_TERM}"},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            return results
+        for r in resp.json().get("results", []):
+            meta = r.get("metaData", {})
+            office = meta.get("office", {}) or {}
+            address = office.get("address", {}) or {}
+            descs = r.get("descriptions", {}) or {}
+            desc = " ".join(filter(None, [
+                descs.get("summary"), descs.get("functionDescription"),
+                descs.get("requirementsDescription"),
+            ]))
+            posted = (meta.get("publicationDate") or "")[:10] or None
+            job = _finalize_nl_job(
+                title=r.get("title", ""),
+                company=meta.get("agency", {}).get("title") or "Luba",
+                location=address.get("city") or "Netherlands",
+                url=meta.get("publicationUrl", ""),
+                desc=desc,
+                posted=posted,
+                remote=False,
+                source="luba-nl",
+                profile=profile, seen_urls=seen_urls, tracked_pairs=tracked_pairs,
+            )
+            if job:
+                results.append(job)
+    except Exception as e:
+        print(f"   [WARN] Luba NL: {e}")
+    return results
+
+
+def _scrape_nl_tempoteam(profile, seen_urls, tracked_pairs):
+    """Tempo-Team.nl — internal Hippo CMS "resource" JSON endpoint (GET),
+    found via network capture. aanvraagNummer + slugified jobNaam reconstructs
+    the public job URL (the JSON itself carries no URL field)."""
+    results = []
+    try:
+        resp = requests.get(
+            "https://www.tempo-team.nl/vacatures",
+            params={"_hn:type": "resource", "_hn:ref": "r280_r1_r1",
+                    "pagina": 1, "zoekterm": _NL_SEARCH_TERM},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)",
+                     "Accept": "application/json"},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            return results
+        data = resp.json()
+        jobs = data.get("relay42", {}).get("jobListing", [])
+        for j in jobs:
+            job_id = j.get("aanvraagNummer")
+            title = j.get("jobNaam") or j.get("jobNaamMondriaan") or ""
+            if not job_id or not title:
+                continue
+            slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+            url = f"https://www.tempo-team.nl/vacatures/{job_id}/{slug}"
+            # The resource JSON carries only category classifications, not a
+            # real description — see uitzendbureau's identical comment above.
+            desc = j.get("jobVakgebieden", "")
+            if _looks_like_data_role(title):
+                desc = (desc + " " + _fetch_nl_detail_text(url)).strip()
+            job = _finalize_nl_job(
+                title=title,
+                company="Tempo-Team",
+                location=j.get("jobPlaats") or "Netherlands",
+                url=url,
+                desc=desc,
+                posted=None,
+                remote=str(j.get("jobWorkfromhome", "")).lower() in ("ja", "yes", "true"),
+                source="tempoteam-nl",
+                profile=profile, seen_urls=seen_urls, tracked_pairs=tracked_pairs,
+            )
+            if job:
+                results.append(job)
+    except Exception as e:
+        print(f"   [WARN] Tempo-Team NL: {e}")
+    return results
+
+
+def _scrape_nl_jopportunity(profile, seen_urls, tracked_pairs):
+    """Jopportunity.nl — OTYS-based ATS portal. The bare search-page URL
+    returns 0 results (no query applied); the real search is a POST to its
+    smartsearch endpoint, found by reading the page's own <form>."""
+    results = []
+    try:
+        resp = requests.post(
+            "https://www.jopportunity.nl/index.php/page/smartsearch/bb/1",
+            data={"smartq": _NL_SEARCH_TERM, "smartsearch_type": "and"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; career-ops-bot/1.0)"},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            return results
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for h2 in soup.find_all("h2"):
+            link = h2.find("a", href=True)
+            if not link or "/command/detail/" not in link["href"]:
+                continue
+            desc_el = h2.find_next_sibling("p")
+            job = _finalize_nl_job(
+                title=link.get_text(strip=True),
+                company="—",
+                location="Netherlands",
+                url=link["href"],
+                desc=desc_el.get_text(" ", strip=True) if desc_el else "",
+                posted=None,
+                remote=False,
+                source="jopportunity-nl",
+                profile=profile, seen_urls=seen_urls, tracked_pairs=tracked_pairs,
+            )
+            if job:
+                results.append(job)
+    except Exception as e:
+        print(f"   [WARN] Jopportunity NL: {e}")
+    return results
+
+
+def scrape_nl_agencies(profile, seen_urls, tracked_pairs):
+    """Orchestrates all 8 NL staffing-agency sources. Netherlands-only,
+    regardless of search_countries — skipped entirely if "Netherlands" isn't
+    in the configured target list. Each source is isolated in its own
+    try/except above so one site breaking (layout/API change) doesn't take
+    the others down."""
+    if not any("netherlands" in c.lower() for c in profile.get("target", {}).get("search_countries", [])):
+        return []
+
+    print(f"\n>> NL agency boards: Randstad, Olympia, Uitzendbureau, YoungCapital, "
+          f"Manpower, Luba, Tempo-Team, Jopportunity...")
+
+    sources = [
+        _scrape_nl_randstad, _scrape_nl_olympia, _scrape_nl_uitzendbureau,
+        _scrape_nl_youngcapital, _scrape_nl_manpower, _scrape_nl_luba,
+        _scrape_nl_tempoteam, _scrape_nl_jopportunity,
+    ]
+    results = []
+    for fn in sources:
+        jobs = fn(profile, seen_urls, tracked_pairs)
+        if jobs:
+            print(f"   + {len(jobs)} from {jobs[0]['source']}")
+        results.extend(jobs)
+
+    if results:
+        print(f"   + {len(results)} total from NL agency boards")
+    return results
+
+
 # ── main ───────────────────────────────────────────────────────────────────
 
 def main():
@@ -1158,6 +1648,11 @@ def main():
         # ── StepStone RSS (jailbreak attempt) ──────────────────────────────────
         ss_jobs = scrape_stepstone_rss(profile, seen_urls, session_pairs)
         all_jobs.extend(ss_jobs)
+
+        # ── NL staffing-agency boards (Randstad, Olympia, Uitzendbureau, ────────
+        # YoungCapital, Manpower, Luba, Tempo-Team, Jopportunity) ───────────────
+        nl_jobs = scrape_nl_agencies(profile, seen_urls, session_pairs)
+        all_jobs.extend(nl_jobs)
 
     # sort by score desc
     all_jobs.sort(key=lambda x: x["score"], reverse=True)
