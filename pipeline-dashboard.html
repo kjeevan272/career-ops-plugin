@@ -82,17 +82,17 @@
     <p>Senior Data Engineer · Germany · career-ops-plugin</p>
   </div>
   <div class="stats">
-    <div class="stat"><div class="n" id="stat-shown">12</div><div class="l">Showing</div></div>
-    <div class="stat"><div class="n" style="color:#7eb8f7">12</div><div class="l">New today</div></div>
+    <div class="stat"><div class="n" id="stat-shown">23</div><div class="l">Showing</div></div>
+    <div class="stat"><div class="n" style="color:#7eb8f7">23</div><div class="l">New today</div></div>
     <div class="stat"><div class="n" id="applied-stat">0</div><div class="l">Applied</div></div>
-    <div class="stat"><div class="n">3</div><div class="l">Remote</div></div>
-    <div class="stat"><div class="n">4</div><div class="l">Score 7+</div></div>
+    <div class="stat"><div class="n">4</div><div class="l">Remote</div></div>
+    <div class="stat"><div class="n">6</div><div class="l">Score 7+</div></div>
   </div>
 </header>
 <div class="run-bar">
-  <span>Last run: <strong>2026-08-10 20:48</strong></span>
-  <span>New this run: <strong>12</strong></span>
-  <span>Total in pipeline: <strong>12</strong></span>
+  <span>Last run: <strong>2026-08-11 13:46</strong></span>
+  <span>New this run: <strong>23</strong></span>
+  <span>Total in pipeline: <strong>23</strong></span>
 </div>
 <div class="controls">
   <input type="text" id="search" placeholder="Search role, company, location...">
@@ -207,18 +207,29 @@ function srcBadge(s) {
 
 // Jobs sorted: new first (by score desc), then old (by score desc)
 const ALL_JOBS = [
-  {n:1,score:8,company:"SCRL",role:"Data Engineer",location:"Stockholm, Stockholm County, Sweden",country:"Sweden",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-10",url:"https://www.linkedin.com/jobs/view/4451530466",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
-  {n:2,score:7,company:"Aurea Imaging",role:"Data Engineer",location:"Utrecht, Netherlands",country:"Netherlands",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-10",url:"https://www.linkedin.com/jobs/view/4451508640",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:true},
-  {n:3,score:7,company:"MEERAB GROUP",role:"Data Engineer-Dutch",location:"Antwerp, Flemish Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-10",url:"https://www.linkedin.com/jobs/view/4451376648",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
-  {n:4,score:7,company:"DCG",role:"Senior AWS Data Engineer",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-10",url:"https://www.linkedin.com/jobs/view/4451508771",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
-  {n:5,score:6,company:"Decskill",role:"Senior Big Data Engineer",location:"Lisbon, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-10",url:"https://www.linkedin.com/jobs/view/4449540600",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
-  {n:6,score:5,company:"BEC Financial Technologies",role:"Data Engineer - Data Governance Team",location:"Copenhagen, Capital Region of Denmark, Denmark",country:"Denmark",remote:true,source:"linkedin",posted:"—",dateFound:"2026-08-10",url:"https://www.linkedin.com/jobs/view/4451384699",isNew:true,resumeDoc:"resumes/cv_senior-data-engineer_bec-financial-technologies.html",coverDoc:"cover-letters/cl_senior-data-engineer_bec-financial-technologies.html",nlSponsor:null},
-  {n:7,score:5,company:"Inetum",role:"Python Developer (Data Engineer)",location:"Lisboa, Lisbon, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"—",dateFound:"2026-08-10",url:"https://www.linkedin.com/jobs/view/4202862680",isNew:true,resumeDoc:"resumes/cv_senior-data-engineer-microsoft-fabric_inetum.html",coverDoc:"cover-letters/cl_senior-data-engineer-microsoft-fabric_inetum.html",nlSponsor:null},
-  {n:8,score:5,company:"AlmavivA do Brasil",role:"Senior Data Architect (Hybrid)",location:"Amsterdam, NH, NL",country:"Other",remote:true,source:"indeed",posted:"2026-08-10",dateFound:"2026-08-10",url:"https://nl.indeed.com/viewjob?jk=cf841c05174a0a08",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:false},
-  {n:9,score:4,company:"Tony\'s Chocolonely",role:"BI Developer",location:"Amsterdam, NH, NL",country:"Other",remote:false,source:"indeed",posted:"2026-08-10",dateFound:"2026-08-10",url:"https://nl.indeed.com/viewjob?jk=088a4fad71a6c6c3",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:false},
-  {n:10,score:4,company:"Medtronic",role:"Senior Software Engineer - Data Services (Patient Care Systems)",location:"Galway, G, IE",country:"Other",remote:false,source:"indeed",posted:"2026-08-10",dateFound:"2026-08-10",url:"https://ie.indeed.com/viewjob?jk=c5640744b0c58e07",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
-  {n:11,score:4,company:"Clarivate",role:"Senior Data Scientist",location:"Barcelona, CT, ES",country:"Other",remote:false,source:"indeed",posted:"2026-08-10",dateFound:"2026-08-10",url:"https://es.indeed.com/viewjob?jk=a8ee1f19018e1428",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
-  {n:12,score:4,company:"Impress",role:"Analytics Engineer",location:"Barcelona, CT, ES",country:"Other",remote:false,source:"indeed",posted:"2026-07-10",dateFound:"2026-08-10",url:"https://es.indeed.com/viewjob?jk=4711f300af84a212",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null}
+  {n:1,score:8,company:"Docplanner",role:"Senior Data Engineer - Data Platform team (100% Remote within Spain)",location:"Barcelona, Catalonia, Spain",country:"Spain",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4451492633",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:2,score:8,company:"Apotek Hjärtat",role:"Data Engineer - Apotek Hjärtat",location:"Solna, Stockholm County, Sweden",country:"Sweden",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4452412955",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:3,score:8,company:"HiQo Solutions, Inc.",role:"Data Engineer - AWS Ecosystem (office OR remote)",location:"Cracow, Małopolskie, Poland",country:"Poland",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4449803696",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:4,score:7,company:"JPMorganChase",role:"Data Engineer III (Databricks)",location:"Dublin, County Dublin, Ireland",country:"Ireland",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4443342077",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:5,score:7,company:"ThetaRay",role:"Data Engineer",location:"Madrid, Community of Madrid, Spain",country:"Spain",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4452433071",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:6,score:7,company:"FDJ UNITED",role:"A&I - Senior Data Architect",location:"Stockholm, Stockholm County, Sweden",country:"Sweden",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4452413849",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:7,score:6,company:"Trust In SODA",role:"Principal Data Architect",location:"Munich, Bavaria, Germany",country:"Germany",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4451641836",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:8,score:6,company:"Proemion",role:"Data Analytics Engineer (gn) - Talent Pool",location:"Hasselt, Flemish Region, Belgium",country:"Belgium",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4449825474",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:9,score:6,company:"Bayer",role:"Senior Lead Data Engineer (w/m/d)",location:"Berlin, Berlin, Germany",country:"Germany",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4452443142",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:10,score:6,company:"MEERAB GROUP",role:"Data Engineer-Dutch OR French",location:"Brussels, Brussels Region, Belgium",country:"Belgium",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4452414708",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:11,score:5,company:"Confidential",role:"Data Engineer: Semantics and Domain Models",location:"Lisbon, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4451834081",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:12,score:5,company:"Einride",role:"Analytics Engineer",location:"Stockholm, Stockholm County, Sweden",country:"Sweden",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4451660400",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:13,score:5,company:"Enersense",role:"Analytics Engineer",location:"Helsinki, Uusimaa, Finland",country:"Finland",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4449833368",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:14,score:5,company:"Jobster",role:"Business Intelligence Engineer, Innovation and Design Engineering - Jobbird.com",location:"Düsseldorf, North Rhine-Westphalia, Germany",country:"Germany",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4451461552",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:15,score:5,company:"AlmavivA de Belgique",role:"Data Architect",location:"Amsterdam, North Holland, Netherlands",country:"Netherlands",remote:true,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4452423346",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:false},
+  {n:16,score:5,company:"AILY LABS",role:"Senior Data Practitioner (Data / Analytics Engineering) - BCN/ MAD/ MUC",location:"Madrid, Community of Madrid, Spain",country:"Spain",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4451663405",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:17,score:5,company:"driveblocks",role:"Expert Perception Data Engineer (m/f/d)",location:"München, BY, DE",country:"Other",remote:false,source:"indeed",posted:"2026-08-10",dateFound:"2026-08-11",url:"https://de.indeed.com/viewjob?jk=4fdb225859b3e418",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:18,score:5,company:"Bain & Company",role:"Data Scientist",location:"Madrid, MD, ES",country:"Other",remote:false,source:"indeed",posted:"2026-08-10",dateFound:"2026-08-11",url:"https://es.indeed.com/viewjob?jk=917039f14d493a94",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:19,score:4,company:"Centra",role:"Senior Analytics Engineer (Product)",location:"Wrocław, Dolnośląskie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4439831272",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:20,score:4,company:"BioSpace",role:"Principal Data Platform Engineer",location:"Warsaw, Mazowieckie, Poland",country:"Poland",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4451617610",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:21,score:4,company:"Inetum",role:"Data Analyst",location:"Lisboa, Lisbon, Portugal",country:"Portugal",remote:false,source:"linkedin",posted:"nan",dateFound:"2026-08-11",url:"https://www.linkedin.com/jobs/view/4336930929",isNew:true,resumeDoc:"resumes/cv_senior-data-engineer-microsoft-fabric_inetum.html",coverDoc:"cover-letters/cl_senior-data-engineer-microsoft-fabric_inetum.html",nlSponsor:null},
+  {n:22,score:4,company:"Rover.com",role:"Senior Data Analyst - Operations Analytics",location:"Barcelona, CT, ES",country:"Other",remote:false,source:"indeed",posted:"2026-08-10",dateFound:"2026-08-11",url:"https://es.indeed.com/viewjob?jk=c158ec526778ebad",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null},
+  {n:23,score:1,company:"Bosch",role:"IN_RBIN_Assistant Manager/Senior Engineer_Data Scientist",location:"—",country:"Other",remote:false,source:"company-crawl",posted:"2026-08-11",dateFound:"2026-08-11",url:"https://jobs.smartrecruiters.com/boschgroup/744000142781949",isNew:true,resumeDoc:"",coverDoc:"",nlSponsor:null}
 ];
 
 function render(data) {
@@ -244,7 +255,7 @@ function render(data) {
     // Section dividers
     if (j.isNew && !shownNew) {
       shownNew = true;
-      html += `<tr class="separator-row"><td colspan="10">&#9733; New from latest run (12 jobs)</td></tr>`;
+      html += `<tr class="separator-row"><td colspan="10">&#9733; New from latest run (23 jobs)</td></tr>`;
     }
     if (!j.isNew && !shownOld) {
       shownOld = true;
