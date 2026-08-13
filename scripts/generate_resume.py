@@ -92,8 +92,10 @@ def resume_css(c):
     .highlight-list {{ list-style: none; padding: 0; margin-bottom: 4pt; }}
     .highlight-list li {{ font-size: 9.5pt; margin-bottom: 3pt; padding-left: 10pt; position: relative; }}
     .highlight-list li::before {{ content: ""; position: absolute; left: 0; top: 6pt; width: 5pt; height: 5pt; background: var(--accent-2); border-radius: 50%; }}
-    .expertise-grid {{ width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 4pt; }}
-    .expertise-grid td {{ padding: 2.5pt 8pt 2.5pt 0; vertical-align: top; width: 33.33%; font-weight: 600; color: var(--accent); }}
+    .expertise-list {{ list-style: none; padding: 0; margin-bottom: 4pt; display: flex; flex-wrap: wrap; }}
+    .expertise-list li {{ font-size: 9.5pt; font-weight: 600; color: var(--accent); flex: 0 0 33.33%; padding: 2.5pt 8pt 2.5pt 0; }}
+    .skills-block {{ font-size: 9.3pt; margin-bottom: 5pt; line-height: 1.5; }}
+    .skills-block .cat-name {{ font-weight: 700; color: var(--accent); }}
     .entry-intro {{ font-size: 9.5pt; margin-bottom: 6pt; color: var(--sub); }}
     .role-block {{ margin-bottom: 4pt; }}
     .role-header {{ display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1pt; }}
@@ -147,12 +149,12 @@ def render_resume(master, tailoring):
 
     highlights = "\n".join(f"    <li>{h}</li>" for h in tailoring["highlights"])
 
-    grid_rows = tailoring["area_of_expertise"]
-    grid_html = ""
-    for i in range(0, len(grid_rows), 3):
-        row = grid_rows[i:i + 3]
-        cells = "\n".join(f"      <td>{c}</td>" for c in row)
-        grid_html += f"    <tr>\n{cells}\n    </tr>\n"
+    grid_html = "\n".join(f"    <li>{c}</li>" for c in tailoring["area_of_expertise"])
+
+    skills_html = "\n".join(
+        f'  <p class="skills-block"><span class="cat-name">{esc(cat["name"])}:</span> {esc(cat["items"])}</p>'
+        for cat in master["skills_categories"]
+    )
 
     projects_html = ""
     for key in tailoring["project_order"]:
@@ -215,8 +217,12 @@ def render_resume(master, tailoring):
   </ul>
 
   <h2>Area of Expertise</h2>
-  <table class="expertise-grid">
-{grid_html}  </table>
+  <ul class="expertise-list">
+{grid_html}
+  </ul>
+
+  <h2>Technical Skills</h2>
+{skills_html}
 
   <h2>Professional Experience</h2>
 
