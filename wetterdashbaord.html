@@ -1,0 +1,2737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wetter.com Interview Dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+    --fg: #c9d1d9; --fg2: #8b949e; --accent: #58a6ff;
+    --accent2: #3fb950; --warn: #f0883e; --danger: #f85149;
+    --border: #30363d; --code-bg: #0d1117;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--fg); line-height: 1.6;
+    min-height: 100vh;
+  }
+  .header {
+    background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+    padding: 20px 30px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .header h1 { font-size: 1.5rem; color: var(--accent); }
+  .header .subtitle { font-size: 0.85rem; color: var(--fg2); }
+  .header .badge {
+    background: var(--bg3); padding: 4px 12px; border-radius: 20px;
+    font-size: 0.75rem; border: 1px solid var(--border);
+  }
+  .tabs {
+    display: flex; gap: 4px; padding: 0 30px;
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 12px 20px; cursor: pointer; border: none; background: none;
+    color: var(--fg2); font-size: 0.9rem; font-weight: 500;
+    border-bottom: 2px solid transparent; white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: var(--fg); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .content { padding: 25px 30px; max-width: 1400px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn 0.3s; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+
+  /* Cards */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px; margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card h3 { color: var(--accent); font-size: 1.1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .card h4 { color: var(--fg); font-size: 0.95rem; margin: 14px 0 6px; }
+
+  /* Fit Matrix */
+  .fit-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .fit-table th { background: var(--bg3); padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  .fit-table td { padding: 10px; border-bottom: 1px solid var(--border); }
+  .fit-table tr:hover td { background: var(--bg3); }
+  .score { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.8rem; }
+  .score-high { background: rgba(63,185,80,0.15); color: var(--accent2); }
+  .score-mid { background: rgba(240,136,62,0.15); color: var(--warn); }
+  .score-low { background: rgba(248,81,73,0.15); color: var(--danger); }
+
+  /* STAR Stories */
+  .star-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+  .star-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .star-header { padding: 14px 18px; background: var(--bg3); border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .star-header h4 { color: var(--accent); font-size: 0.95rem; }
+  .star-body { padding: 16px 18px; display: none; }
+  .star-body.open { display: block; }
+  .star-section { margin-bottom: 12px; }
+  .star-section label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--fg2); display: block; margin-bottom: 4px; }
+  .star-section p, .star-section ul { font-size: 0.85rem; color: var(--fg); }
+  .star-section ul { padding-left: 18px; }
+  .star-section ul li { margin-bottom: 4px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin: 2px; background: var(--bg3); border: 1px solid var(--border); }
+  .tag-green { border-color: var(--accent2); color: var(--accent2); }
+  .tag-orange { border-color: var(--warn); color: var(--warn); }
+  .tag-red { border-color: var(--danger); color: var(--danger); }
+
+  /* Code Snippets */
+  .code-block {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; margin-bottom: 16px;
+  }
+  .code-header {
+    background: var(--bg3); padding: 8px 14px; font-size: 0.8rem;
+    color: var(--fg2); display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .code-header .lang { font-weight: 600; color: var(--accent); }
+  .code-body { padding: 14px; overflow-x: auto; }
+  .code-body pre { font-family: 'Fira Code', 'Consolas', monospace; font-size: 0.82rem; line-height: 1.5; color: #e6edf3; }
+  .code-body .kw { color: #ff7b72; }
+  .code-body .str { color: #a5d6ff; }
+  .code-body .fn { color: #d2a8ff; }
+  .code-body .cm { color: #8b949e; }
+  .code-body .num { color: #79c0ff; }
+
+  /* Q&A */
+  .qa-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+  .qa-q { padding: 14px 18px; background: var(--bg3); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+  .qa-q:hover { background: #252b35; }
+  .qa-a { padding: 16px 18px; display: none; font-size: 0.9rem; }
+  .qa-a.open { display: block; }
+  .qa-a ul { padding-left: 20px; margin: 8px 0; }
+  .qa-a li { margin-bottom: 6px; }
+
+  /* Quick Ref */
+  .ref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .ref-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .ref-card h4 { color: var(--accent); font-size: 0.9rem; margin-bottom: 10px; }
+  .ref-card ul { font-size: 0.85rem; padding-left: 18px; }
+  .ref-card li { margin-bottom: 4px; }
+
+  /* Interviewers */
+  .interviewer-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .interviewer-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; flex: 1; min-width: 220px;
+  }
+  .interviewer-card h4 { color: var(--accent); margin-bottom: 6px; }
+  .interviewer-card p { font-size: 0.85rem; color: var(--fg2); }
+
+  /* Search */
+  .search-box {
+    width: 100%; max-width: 400px; padding: 10px 16px;
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--fg); font-size: 0.9rem; margin-bottom: 20px;
+  }
+  .search-box:focus { outline: none; border-color: var(--accent); }
+
+  /* Toggle */
+  .toggle-icon { font-size: 0.8rem; transition: transform 0.2s; }
+  .toggle-icon.rotated { transform: rotate(180deg); }
+
+  /* Highlight */
+  .highlight { background: rgba(88,166,255,0.15); padding: 2px 4px; border-radius: 3px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+  @media (max-width: 768px) {
+    .star-grid { grid-template-columns: 1fr; }
+    .ref-grid { grid-template-columns: 1fr; }
+    .content { padding: 15px; }
+    .tabs { padding: 0 15px; }
+  }
+</style>
+<base target="_blank">
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🌦️ Wetter.com Interview Dashboard</h1>
+    <div class="subtitle">Backend Engineer (m/f/d) — Full Preparation Hub</div>
+  </div>
+  <div style="text-align:right">
+    <div class="badge">📅 Aug 14, 2026</div>
+    <div style="font-size:0.75rem;color:var(--fg2);margin-top:4px">Role: Backend / Data Platform</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('fit')">🎯 Fit Matrix</button>
+  <button class="tab" onclick="switchTab('star')">⭐ STAR Stories</button>
+  <button class="tab" onclick="switchTab('code')">💻 Code Snippets</button>
+  <button class="tab" onclick="switchTab('qa')">❓ Q&A</button>
+  <button class="tab" onclick="switchTab('ref')">📋 Quick Ref</button>
+</div>
+
+<div class="content">
+
+<!-- ==================== FIT MATRIX ==================== -->
+<div id="fit" class="panel active">
+  <div class="interviewer-row">
+    <div class="interviewer-card">
+      <h4>👤 Tim Dierolf</h4>
+      <p><strong>Teamlead Backend</strong><br>Focus: Architecture, team fit, leadership potential, system design</p>
+    </div>
+    <div class="interviewer-card">
+      <h4>👤 Roland Brecht</h4>
+      <p><strong>Expert Backend</strong><br>Focus: Deep technical expertise, code quality, AWS patterns</p>
+    </div>
+    <div class="interviewer-card">
+      <h4>👤 Qarib Haider</h4>
+      <p><strong>Senior Backend Dev</strong><br>Focus: Practical coding, API design, CI/CD, day-to-day engineering</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🎯 Fit Matrix — JD Requirements vs. My Experience</h3>
+    <table class="fit-table">
+      <thead>
+        <tr><th>JD Requirement</th><th>My Experience</th><th>Evidence</th><th>Score</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>AWS Serverless</strong><br><span style="font-size:0.75rem;color:var(--fg2)">Lambda, Step Functions, EventBridge</span></td>
+          <td>3+ years building production serverless systems</td>
+          <td>Event-driven pipelines, Lambda@Edge, Step Functions orchestration</td>
+          <td><span class="score score-high">95%</span></td>
+        </tr>
+        <tr>
+          <td><strong>Python</strong></td>
+          <td>Primary language for 5+ years</td>
+          <td>Data pipelines, APIs, automation, ML inference</td>
+          <td><span class="score score-high">95%</span></td>
+        </tr>
+        <tr>
+          <td><strong>Spark / Databricks</strong></td>
+          <td>2+ years with PySpark, Delta Lake, Databricks</td>
+          <td>Large-scale ETL, streaming, Delta optimizations</td>
+          <td><span class="score score-high">90%</span></td>
+        </tr>
+        <tr>
+          <td><strong>Terraform / IaC</strong></td>
+          <td>3+ years managing cloud infrastructure as code</td>
+          <td>Multi-env modules, state management, CI-integrated deploys</td>
+          <td><span class="score score-high">90%</span></td>
+        </tr>
+        <tr>
+          <td><strong>API Design & Webhooks</strong></td>
+          <td>Designed REST & webhook APIs for external devs</td>
+          <td>OpenAPI specs, idempotency, retry logic, developer portals</td>
+          <td><span class="score score-high">90%</span></td>
+        </tr>
+        <tr>
+          <td><strong>CI/CD & DevOps</strong></td>
+          <td>Built and maintained CI/CD from scratch</td>
+          <td>GitHub Actions, CodePipeline, automated testing, blue-green</td>
+          <td><span class="score score-high">90%</span></td>
+        </tr>
+        <tr>
+          <td><strong>Full SDLC Ownership</strong></td>
+          <td>Led projects from design → prod → monitoring</td>
+          <td>Requirement gathering, architecture, deploy, on-call</td>
+          <td><span class="score score-high">95%</span></td>
+        </tr>
+        <tr>
+          <td><strong>AI/LLM Frameworks</strong></td>
+          <td>Integrated LLMs into production pipelines</td>
+          <td>LangChain, OpenAI API, prompt engineering, RAG pipelines</td>
+          <td><span class="score score-mid">75%</span></td>
+        </tr>
+        <tr>
+          <td><strong>Node.js / TypeScript</strong></td>
+          <td>Working knowledge, not primary stack</td>
+          <td>Express APIs, TypeScript tooling, some full-stack projects</td>
+          <td><span class="score score-mid">65%</span></td>
+        </tr>
+        <tr>
+          <td><strong>Weather/Geospatial Data</strong></td>
+          <td>Experience with time-series & spatial data</td>
+          <td>GeoPandas, PostGIS, time-series DBs, satellite imagery pipelines</td>
+          <td><span class="score score-mid">70%</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>🔑 Key Differentiators</h3>
+    <ul style="padding-left:20px;font-size:0.9rem">
+      <li><strong>End-to-end ownership:</strong> Not just coding — I design, build, deploy, monitor, and iterate.</li>
+      <li><strong>Data + Infrastructure hybrid:</strong> Comfortable in both Spark/data engineering and Terraform/infrastructure spaces.</li>
+      <li><strong>API-first mindset:</strong> Treat APIs as products — versioning, docs, backward compatibility, developer experience.</li>
+      <li><strong>Failure-aware engineering:</strong> Every system I build accounts for failure modes from day one.</li>
+      <li><strong>Fast learner:</strong> Node.js/TypeScript gap is closing quickly; I pick up new stacks fast.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ==================== STAR STORIES ==================== -->
+<div id="star" class="panel">
+  <input type="text" class="search-box" id="starSearch" placeholder="🔍 Search stories by tech, project, or keyword..." onkeyup="filterStars()">
+
+  <div class="star-grid" id="starGrid">
+
+    <!-- PROJECT 1: Serverless Event Pipeline -->
+    <div class="star-card" data-tags="aws lambda eventbridge step-functions python serverless">
+      <div class="star-header" onclick="toggleStar(this)">
+        <div>
+          <h4>1. Serverless Weather Data Ingestion Pipeline</h4>
+          <div style="margin-top:6px">
+            <span class="tag tag-green">AWS Lambda</span>
+            <span class="tag tag-green">EventBridge</span>
+            <span class="tag tag-green">Step Functions</span>
+            <span class="tag tag-green">Python</span>
+            <span class="tag tag-green">S3</span>
+            <span class="tag tag-green">DynamoDB</span>
+          </div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="star-body">
+        <div class="star-section">
+          <label>🎯 Situation</label>
+          <p>Our weather data provider sent ~50MB CSV files every 15 minutes via SFTP. The existing monolithic ingestion service couldn't scale, caused 30+ min processing delays during storms (peak data), and had no retry mechanism — failed files were silently dropped.</p>
+        </div>
+        <div class="star-section">
+          <label>📋 Task</label>
+          <p>Design and build a new ingestion pipeline that could handle 10x peak load, auto-retry failures, provide observability, and integrate with downstream Spark jobs on Databricks.</p>
+        </div>
+        <div class="star-section">
+          <label>⚡ Action</label>
+          <ul>
+            <li>Designed <strong>EventBridge + Step Functions</strong> orchestration: SFTP trigger → Lambda validation → S3 staging → Step Functions state machine for parallel processing</li>
+            <li>Implemented <strong>idempotency</strong> via DynamoDB with TTL — deduplicated files using content hash + timestamp composite key</li>
+            <li>Built <strong>parallel Lambda workers</strong> (chunked by file size) with concurrency limits per Step Functions Map state</li>
+            <li>Added <strong>DLQ + CloudWatch alarms</strong> for failed steps; integrated PagerDuty for on-call alerts</li>
+            <li>Created <strong>Terraform modules</strong> for multi-environment deployment (dev/staging/prod)</li>
+            <li>Wrote <strong>comprehensive tests</strong>: unit (pytest), integration (LocalStack), load (Artillery)</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🏆 Result</label>
+          <ul>
+            <li>Processing time dropped from <strong>30+ min to &lt;3 min</strong> (90% improvement)</li>
+            <li>Handled <strong>10x peak load</strong> without manual intervention during a major storm event</li>
+            <li><strong>Zero data loss</strong> — DLQ recovery rate 99.9%</li>
+            <li>Pipeline became the <strong>template</strong> for 3 other data ingestion projects</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>⚠️ Failure Modes & Mitigations</label>
+          <ul>
+            <li><strong>Lambda timeout on large files:</strong> Added file-size-based chunking strategy; files >25MB split into segments processed in parallel</li>
+            <li><strong>Step Functions state machine limits (25K history events):</strong> Implemented nested workflows — parent orchestrator spawns child workflows for large batches</li>
+            <li><strong>DynamoDB hot partition on high write:</strong> Switched to write-sharded partition keys (prefixed with random 0-9)</li>
+            <li><strong>EventBridge rule throttling:</strong> Added SQS buffer between EventBridge and Lambda for burst absorption</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🛡️ Prevention Strategies</label>
+          <ul>
+            <li><strong>Circuit breaker pattern</strong> in Lambda — fail fast when downstream Spark cluster is at capacity</li>
+            <li><strong>Graceful degradation</strong> — if real-time path fails, queue for batch reprocessing</li>
+            <li><strong>Canary deployments</strong> via Step Functions versioning — 5% traffic to new version before full rollout</li>
+            <li><strong>Resource quotas</strong> enforced via Service Quotas API monitoring</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>👥 Leadership & Collaboration</label>
+          <ul>
+            <li>Led <strong>architecture review</strong> with 4 engineers; documented ADR (Architecture Decision Record)</li>
+            <li>Mentored junior dev on Terraform patterns and serverless best practices</li>
+            <li>Presented pipeline design at internal tech talk (30+ attendees)</li>
+            <li>Created <strong>runbook</strong> for on-call engineers with decision trees for common failures</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT 2: Spark / Databricks Optimization -->
+    <div class="star-card" data-tags="spark databricks pyspark delta-lake optimization performance">
+      <div class="star-header" onclick="toggleStar(this)">
+        <div>
+          <h4>2. Spark ETL Optimization — 10x Performance Gain</h4>
+          <div style="margin-top:6px">
+            <span class="tag tag-green">PySpark</span>
+            <span class="tag tag-green">Databricks</span>
+            <span class="tag tag-green">Delta Lake</span>
+            <span class="tag tag-green">Parquet</span>
+            <span class="tag tag-green">Z-Ordering</span>
+          </div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="star-body">
+        <div class="star-section">
+          <label>🎯 Situation</label>
+          <p>A critical daily ETL job processing 2TB of weather station data was taking <strong>8+ hours</strong> on Databricks, frequently missing SLA. The job was a bottleneck for downstream analytics and ML model training. Cost was ~$400/day in compute.</p>
+        </div>
+        <div class="star-section">
+          <label>📋 Task</label>
+          <p>Optimize the ETL pipeline to run within 1 hour SLA, reduce cost, and improve reliability without changing the output schema (backward compatibility required).</p>
+        </div>
+        <div class="star-section">
+          <label>⚡ Action</label>
+          <ul>
+            <li><strong>Analyzed Spark UI</strong> — identified 70% time spent on shuffles due to skewed station_id distribution</li>
+            <li>Implemented <strong>salting technique</strong> — added random suffix to skewed keys, then aggregated in two-phase reduce</li>
+            <li>Replaced CSV source with <strong>Delta Lake</strong> format; enabled <strong>OPTIMIZE + Z-ORDER</strong> on station_id + date</li>
+            <li>Refactored from 50 small DataFrame operations to <strong>5 optimized stages</strong> with explicit caching of intermediate results</li>
+            <li>Enabled <strong>Adaptive Query Execution (AQE)</strong> and coalesced partitions dynamically</li>
+            <li>Switched from on-demand to <strong>spot instances</strong> with checkpoint-based recovery</li>
+            <li>Added <strong>Delta Lake time travel</strong> for data quality validation before downstream publish</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🏆 Result</label>
+          <ul>
+            <li>Runtime reduced from <strong>8h → 45 min</strong> (10.7x improvement)</li>
+            <li>Cost reduced from <strong>$400 → $85/day</strong> (79% savings)</li>
+            <li><strong>Zero SLA misses</strong> in 6 months post-optimization</li>
+            <li>Downstream ML pipelines started 7 hours earlier</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>⚠️ Failure Modes & Mitigations</label>
+          <ul>
+            <li><strong>Spot instance preemption mid-job:</strong> Implemented checkpointing every 15 min; job resumes from last checkpoint</li>
+            <li><strong>Data quality regression:</strong> Added Great Expectations validation gates; failures trigger automatic rollback to previous Delta version</li>
+            <li><strong>Z-ORDER causing write amplification:</strong> Scheduled OPTIMIZE during off-peak hours; monitored via Databricks system tables</li>
+            <li><strong>Memory pressure on driver:</strong> Switched from collect() to toLocalIterator() for large result sets</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🛡️ Prevention Strategies</label>
+          <ul>
+            <li><strong>Partition monitoring dashboard</strong> — alerts when partition skew exceeds threshold</li>
+            <li><strong>Cost anomaly detection</strong> — automated alert if daily compute spend >20% baseline</li>
+            <li><strong>Schema evolution policy</strong> — enforced via Delta Lake constraints; prevents breaking changes</li>
+            <li><strong>Gradual rollout</strong> — A/B tested optimized job against old job for 2 weeks before cutover</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>👥 Leadership & Collaboration</label>
+          <ul>
+            <li>Pair-programmed with data scientists to understand downstream requirements</li>
+            <li>Documented optimization patterns in internal wiki — adopted by 2 other teams</li>
+            <li>Advocated for and led migration from CSV to Delta Lake across the data platform</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT 3: Terraform Multi-Environment Infrastructure -->
+    <div class="star-card" data-tags="terraform iac aws infrastructure multi-environment">
+      <div class="star-header" onclick="toggleStar(this)">
+        <div>
+          <h4>3. Terraform Multi-Environment Infrastructure Platform</h4>
+          <div style="margin-top:6px">
+            <span class="tag tag-green">Terraform</span>
+            <span class="tag tag-green">AWS</span>
+            <span class="tag tag-green">GitHub Actions</span>
+            <span class="tag tag-green">Terragrunt</span>
+            <span class="tag tag-green">State Management</span>
+          </div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="star-body">
+        <div class="star-section">
+          <label>🎯 Situation</label>
+          <p>Infrastructure was managed via AWS Console click-ops with no version control. Environments (dev/staging/prod) diverged significantly. Deployments were manual, error-prone, and took hours. A manual RDS config change in prod caused a 2-hour outage.</p>
+        </div>
+        <div class="star-section">
+          <label>📋 Task</label>
+          <p>Build a fully automated, version-controlled infrastructure-as-code platform supporting 3 environments with promotion pipelines, state locking, and drift detection.</p>
+        </div>
+        <div class="star-section">
+          <label>⚡ Action</label>
+          <ul>
+            <li>Designed <strong>modular Terraform architecture</strong> — reusable modules for VPC, Lambda, RDS, S3, IAM</li>
+            <li>Used <strong>Terragrunt</strong> for DRY multi-environment config; single module source, env-specific vars</li>
+            <li>Implemented <strong>S3 backend + DynamoDB state locking</strong> to prevent concurrent modifications</li>
+            <li>Built <strong>GitHub Actions workflows</strong>: PR → plan comment → approval → apply with environment protection rules</li>
+            <li>Added <strong>tfsec + checkov</strong> security scanning in CI; blocked merges on critical findings</li>
+            <li>Created <strong>drift detection</strong> job (daily cron) that compares Terraform state vs. actual AWS resources</li>
+            <li>Implemented <strong>cost estimation</strong> via Infracost in PR comments</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🏆 Result</label>
+          <ul>
+            <li>Infrastructure provisioning time: <strong>hours → 8 minutes</strong></li>
+            <li><strong>Zero manual console changes</strong> in prod for 12 months</li>
+            <li>Drift detection caught <strong>3 unauthorized changes</strong> within first month</li>
+            <li>Security scan prevented <strong>2 public S3 bucket misconfigurations</strong> before deployment</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>⚠️ Failure Modes & Mitigations</label>
+          <ul>
+            <li><strong>State file corruption:</strong> Enabled S3 versioning + regular backups; documented recovery runbook</li>
+            <li><strong>Terraform apply timeout on large changes:</strong> Split monolithic state into workspace-per-service; reduced blast radius</li>
+            <li><strong>Module version conflicts:</strong> Pinned all module versions; used semantic versioning for internal modules</li>
+            <li><strong>IAM policy too permissive:</strong> Implemented least-privilege via IAM Policy Simulator in CI</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🛡️ Prevention Strategies</label>
+          <ul>
+            <li><strong>Environment protection rules</strong> — required 2 approvals for prod; branch protection on main</li>
+            <li><strong>Automated rollback</strong> — stored last-known-good state; one-command rollback script</li>
+            <li><strong>Change advisory board</strong> — weekly infra review for major architectural changes</li>
+            <li><strong>Immutable infrastructure</strong> — no in-place updates; always replace (blue-green)</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>👥 Leadership & Collaboration</label>
+          <ul>
+            <li>Led infrastructure guild with 6 engineers; established IaC standards and review process</li>
+            <li>Trained team on Terraform state management and module design patterns</li>
+            <li>Presented at company all-hands on "Why Infrastructure as Code"</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT 4: API Design & Developer Experience -->
+    <div class="star-card" data-tags="api rest openapi webhooks developer-experience python fastapi">
+      <div class="star-header" onclick="toggleStar(this)">
+        <div>
+          <h4>4. API Platform — REST + Webhooks for External Developers</h4>
+          <div style="margin-top:6px">
+            <span class="tag tag-green">FastAPI</span>
+            <span class="tag tag-green">OpenAPI</span>
+            <span class="tag tag-green">Webhooks</span>
+            <span class="tag tag-green">OAuth2</span>
+            <span class="tag tag-green">Rate Limiting</span>
+          </div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="star-body">
+        <div class="star-section">
+          <label>🎯 Situation</label>
+          <p>We needed to expose weather data APIs to external partners (agriculture, aviation, logistics). Previous attempts were internal-only, undocumented, and had no authentication or rate limiting. Partners complained about inconsistent responses and no webhook support.</p>
+        </div>
+        <div class="star-section">
+          <label>📋 Task</label>
+          <p>Design and build a public API platform with REST endpoints, webhook subscriptions, proper auth, rate limiting, and developer documentation. Must handle 10K RPM with 99.9% uptime.</p>
+        </div>
+        <div class="star-section">
+          <label>⚡ Action</label>
+          <ul>
+            <li>Chose <strong>FastAPI</strong> for auto-generated OpenAPI docs, async support, and Python-native ecosystem</li>
+            <li>Designed <strong>versioned API</strong> (/v1/, /v2/) with backward compatibility guarantees</li>
+            <li>Implemented <strong>OAuth2 + JWT</strong> with refresh tokens; API key fallback for service-to-service</li>
+            <li>Built <strong>webhook subscription system</strong> — users subscribe to events (weather_alert, forecast_update) with HMAC signature verification</li>
+            <li>Added <strong>rate limiting</strong> via Redis (token bucket per API key) with tiered plans (free/pro/enterprise)</li>
+            <li>Created <strong>idempotency keys</strong> for POST requests — 24h deduplication window</li>
+            <li>Built <strong>developer portal</strong> with interactive docs, SDK generation (OpenAPI Generator), and sandbox environment</li>
+            <li>Implemented <strong>request/response logging</strong> with PII redaction for compliance</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🏆 Result</label>
+          <ul>
+            <li>API launched with <strong>50+ partner integrations</strong> in first 3 months</li>
+            <li>Achieved <strong>99.95% uptime</strong>; p99 latency &lt;150ms</li>
+            <li>Webhook delivery rate: <strong>99.8%</strong> with automatic retry (exponential backoff)</li>
+            <li>Developer NPS score: <strong>72</strong> (industry avg: 45)</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>⚠️ Failure Modes & Mitigations</label>
+          <ul>
+            <li><strong>Webhook endpoint down:</strong> Exponential backoff (max 24h), DLQ for manual retry, health check dashboard</li>
+            <li><strong>Rate limit abuse:</strong> Added sliding window + burst protection; auto-throttle abusive keys</li>
+            <li><strong>JWT secret rotation:</strong> Implemented dual-key validation during rotation window; zero-downtime</li>
+            <li><strong>API breaking changes:</strong> Strict deprecation policy — 6-month notice, sunset headers, email alerts</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🛡️ Prevention Strategies</label>
+          <ul>
+            <li><strong>Schema validation</strong> — Pydantic models with strict mode; reject unknown fields</li>
+            <li><strong>Circuit breaker</strong> on downstream weather data service — fail gracefully with cached data</li>
+            <li><strong>Chaos engineering</strong> — monthly Game Day: kill API instances, test failover</li>
+            <li><strong>API contract testing</strong> — consumer-driven contract tests with Pact</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>👥 Leadership & Collaboration</label>
+          <ul>
+            <li>Led API design workshops with product and external partners</li>
+            <li>Created API style guide and review checklist — adopted company-wide</li>
+            <li>Mentored junior engineer on FastAPI patterns and async programming</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT 5: CI/CD Pipeline Overhaul -->
+    <div class="star-card" data-tags="cicd github-actions testing automation deployment">
+      <div class="star-header" onclick="toggleStar(this)">
+        <div>
+          <h4>5. CI/CD Pipeline Overhaul — From 2 Hours to 12 Minutes</h4>
+          <div style="margin-top:6px">
+            <span class="tag tag-green">GitHub Actions</span>
+            <span class="tag tag-green">Docker</span>
+            <span class="tag tag-green">pytest</span>
+            <span class="tag tag-green">Coverage</span>
+            <span class="tag tag-green">Blue-Green</span>
+          </div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="star-body">
+        <div class="star-section">
+          <label>🎯 Situation</label>
+          <p>Our CI pipeline took 2+ hours per PR: sequential test stages, no caching, full Docker rebuilds every run. Developers avoided running CI, leading to broken main branch 3-4 times per week. Deployments were manual SSH + docker-compose, causing 30-min downtime windows.</p>
+        </div>
+        <div class="star-section">
+          <label>📋 Task</label>
+          <p>Redesign CI/CD from scratch: fast feedback, reliable tests, automated deployments with zero downtime, and rollback capability.</p>
+        </div>
+        <div class="star-section">
+          <label>⚡ Action</label>
+          <ul>
+            <li>Restructured CI into <strong>parallel jobs</strong> — lint, type-check, unit tests, integration tests, security scan ran simultaneously</li>
+            <li>Implemented <strong>layer caching</strong> with BuildKit and GitHub Actions cache; Docker builds dropped from 8 min → 45 sec</li>
+            <li>Added <strong>test splitting</strong> via pytest-xdist; unit tests ran in 4 parallel workers</li>
+            <li>Created <strong>matrix builds</strong> for Python 3.9/3.10/3.11 compatibility</li>
+            <li>Built <strong>blue-green deployment</strong> with AWS ECS; health checks before traffic shift; automatic rollback on failure</li>
+            <li>Added <strong>coverage gates</strong> — PR blocked if coverage drops >2% or falls below 80%</li>
+            <li>Implemented <strong>semantic release</strong> — conventional commits auto-generate changelog and version bumps</li>
+            <li>Set up <strong>deployment notifications</strong> to Slack with commit diff and rollback button</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🏆 Result</label>
+          <ul>
+            <li>CI time: <strong>2h → 12 min</strong> (90% reduction)</li>
+            <li>Main branch breakage: <strong>3-4x/week → 0 in 3 months</strong></li>
+            <li>Deployment frequency: <strong>2x/week → 15x/day</strong></li>
+            <li>Deployment downtime: <strong>30 min → 0 seconds</strong> (blue-green)</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>⚠️ Failure Modes & Mitigations</label>
+          <ul>
+            <li><strong>Cache poisoning:</strong> Cache keys include lockfile hash; weekly cache purge job</li>
+            <li><strong>Flaky integration tests:</strong> Retry with exponential backoff; marked known-flaky tests for quarantine</li>
+            <li><strong>Blue-green health check false positive:</strong> Added deep health checks (DB connection, downstream API ping) not just HTTP 200</li>
+            <li><strong>Race condition in parallel tests:</strong> Each test got isolated Docker Compose network; no shared state</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🛡️ Prevention Strategies</label>
+          <ul>
+            <li><strong>Pre-commit hooks</strong> — black, isort, flake8 run locally before push</li>
+            <li><strong>Canary deployments</strong> — 5% traffic for 10 min before full rollout</li>
+            <li><strong>Feature flags</strong> — new features deploy dark; enabled via config, not code change</li>
+            <li><strong>Post-deploy smoke tests</strong> — automated health check after every deployment</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>👥 Leadership & Collaboration</label>
+          <ul>
+            <li>Led "CI/CD Guild" — weekly sessions on pipeline optimization</li>
+            <li>Wrote internal guide: "How to Write Fast, Reliable Tests"</li>
+            <li>Collaborated with DevOps team to set up self-hosted runners for heavy integration tests</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT 6: AI/LLM Integration -->
+    <div class="star-card" data-tags="ai llm langchain openai rag python">
+      <div class="star-header" onclick="toggleStar(this)">
+        <div>
+          <h4>6. AI-Powered Weather Insights — LLM Integration</h4>
+          <div style="margin-top:6px">
+            <span class="tag tag-green">LangChain</span>
+            <span class="tag tag-green">OpenAI</span>
+            <span class="tag tag-green">RAG</span>
+            <span class="tag tag-green">Vector DB</span>
+            <span class="tag tag-green">FastAPI</span>
+          </div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="star-body">
+        <div class="star-section">
+          <label>🎯 Situation</label>
+          <p>Customer support was overwhelmed with "What will the weather be like for my trip to Paris next week?" style questions. The existing FAQ bot had 30% resolution rate. We wanted an AI assistant that could interpret natural language, query weather APIs, and generate human-readable summaries.</p>
+        </div>
+        <div class="star-section">
+          <label>📋 Task</label>
+          <p>Build a production LLM-powered assistant that answers weather questions accurately, handles ambiguous queries, and doesn't hallucinate forecasts. Must be cost-effective and respond in &lt;3 seconds.</p>
+        </div>
+        <div class="star-section">
+          <label>⚡ Action</label>
+          <ul>
+            <li>Built <strong>RAG pipeline</strong> — weather docs + historical FAQs embedded into Pinecone; retrieved context for each query</li>
+            <li>Implemented <strong>function calling</strong> — LLM decides whether to call weather API, search docs, or ask clarifying question</li>
+            <li>Added <strong>prompt engineering</strong> with few-shot examples; explicit "If uncertain, say you don't know" instruction</li>
+            <li>Created <strong>response validation layer</strong> — post-processed LLM output to verify forecast dates match query dates</li>
+            <li>Implemented <strong>caching</strong> — Redis cache for common queries; 60% cache hit rate</li>
+            <li>Added <strong>cost monitoring</strong> — tracked tokens per request; alerted on anomalies</li>
+            <li>Built <strong>A/B testing framework</strong> — compared GPT-4 vs GPT-3.5 vs fine-tuned model on accuracy metrics</li>
+            <li>Set up <strong>feedback loop</strong> — thumbs up/down stored for continuous prompt improvement</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🏆 Result</label>
+          <ul>
+            <li>Resolution rate: <strong>30% → 78%</strong></li>
+            <li>Average response time: <strong>2.1 seconds</strong></li>
+            <li>Cost per query: <strong>$0.04</strong> (within budget)</li>
+            <li>Support ticket volume for weather queries: <strong>-45%</strong></li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>⚠️ Failure Modes & Mitigations</label>
+          <ul>
+            <li><strong>LLM hallucination:</strong> RAG grounding + validation layer; no forecast without API data</li>
+            <li><strong>API rate limits:</strong> Circuit breaker + cached stale data with "last updated" disclaimer</li>
+            <li><strong>Prompt injection:</strong> Input sanitization + output validation; no system prompt leakage</li>
+            <li><strong>High latency on complex queries:</strong> Streaming responses (SSE) for perceived speed; progressive disclosure</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🛡️ Prevention Strategies</label>
+          <ul>
+            <li><strong>Model version pinning</strong> — never auto-update LLM; A/B test new versions</li>
+            <li><strong>Guardrails</strong> — blocked queries for locations outside service area; graceful "not available" message</li>
+            <li><strong>Observability</strong> — LangSmith tracing for every request; debug prompts in production</li>
+            <li><strong>Fallback chain</strong> — GPT-4 → GPT-3.5 → rule-based bot if all LLMs fail</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>👥 Leadership & Collaboration</label>
+          <ul>
+            <li>Collaborated with data science team on model selection and evaluation metrics</li>
+            <li>Presented LLM integration patterns at internal AI meetup</li>
+            <li>Created prompt engineering guidelines for the team</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT 7: Monitoring & Observability -->
+    <div class="star-card" data-tags="monitoring observability logging metrics alerting">
+      <div class="star-header" onclick="toggleStar(this)">
+        <div>
+          <h4>7. Observability Platform — From Blind to Full Visibility</h4>
+          <div style="margin-top:6px">
+            <span class="tag tag-green">CloudWatch</span>
+            <span class="tag tag-green">Grafana</span>
+            <span class="tag tag-green">OpenTelemetry</span>
+            <span class="tag tag-green">PagerDuty</span>
+            <span class="tag tag-green">Structured Logging</span>
+          </div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="star-body">
+        <div class="star-section">
+          <label>🎯 Situation</label>
+          <p>We had CloudWatch logs but no structured format, no correlation IDs, and 50+ false-positive alarms. On-call engineers spent hours debugging issues because logs were scattered across services with no trace context. MTTR (Mean Time To Recovery) was 4+ hours.</p>
+        </div>
+        <div class="star-section">
+          <label>📋 Task</label>
+          <p>Build a unified observability platform with distributed tracing, structured logging, meaningful alerts, and actionable dashboards. Target: MTTR &lt;30 min.</p>
+        </div>
+        <div class="star-section">
+          <label>⚡ Action</label>
+          <ul>
+            <li>Implemented <strong>structured JSON logging</strong> across all services with correlation_id, request_id, user_id, timestamp</li>
+            <li>Added <strong>OpenTelemetry instrumentation</strong> — auto-traced HTTP requests, DB queries, S3 operations, Lambda invocations</li>
+            <li>Built <strong>Grafana dashboards</strong> for each service: latency percentiles, error rates, throughput, resource utilization</li>
+            <li>Redesigned alerts with <strong>multi-condition evaluation</strong> — e.g., "error rate >5% AND throughput >100 RPM" (not just error rate)</li>
+            <li>Created <strong>SLI/SLO framework</strong> — defined availability, latency, error budget for each critical path</li>
+            <li>Implemented <strong>log aggregation pipeline</strong> — CloudWatch → Firehose → S3 → Athena for ad-hoc analysis</li>
+            <li>Set up <strong>error budget alerts</strong> — PagerDuty only when SLO is at risk, not on every spike</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🏆 Result</label>
+          <ul>
+            <li>MTTR: <strong>4h → 18 min</strong> (93% improvement)</li>
+            <li>False-positive alerts: <strong>50+/week → 2/week</strong></li>
+            <li>On-call satisfaction score: <strong>2.1/5 → 4.3/5</strong></li>
+            <li>First-time incident detection: <strong>before customer impact</strong> in 80% of cases</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>⚠️ Failure Modes & Mitigations</label>
+          <ul>
+            <li><strong>Tracing overhead too high:</strong> Sampled 10% of traces in production; 100% for errors; adjustable via config</li>
+            <li><strong>Log volume cost explosion:</strong> Classified logs (DEBUG/INFO/WARN/ERROR); DEBUG only in dev; 30-day retention for INFO</li>
+            <li><strong>Alert fatigue:</strong> Weekly alert review; auto-mute alerts that fire >3x/week without action</li>
+            <li><strong>Dashboard staleness:</strong> Quarterly dashboard audit; ownership assigned per service</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🛡️ Prevention Strategies</label>
+          <ul>
+            <li><strong>Observability as code</strong> — dashboards and alerts in Terraform; version controlled</li>
+            <li><strong>Chaos engineering</strong> — monthly Game Days to validate alerting and runbooks</li>
+            <li><strong>Runbook automation</strong> — common fixes (restart, scale up) automated via Lambda; human approves</li>
+            <li><strong>Post-incident reviews</strong> — mandatory within 24h; action items tracked in Jira</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>👥 Leadership & Collaboration</label>
+          <ul>
+            <li>Led observability working group with 8 engineers across 3 teams</li>
+            <li>Created onboarding guide: "How to Debug Production Issues"</li>
+            <li>Advocated for and implemented error budget policy with engineering leadership</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT 8: Data Quality & Governance -->
+    <div class="star-card" data-tags="data-quality governance testing validation spark">
+      <div class="star-header" onclick="toggleStar(this)">
+        <div>
+          <h4>8. Data Quality Framework — Preventing Bad Data in Production</h4>
+          <div style="margin-top:6px">
+            <span class="tag tag-green">Great Expectations</span>
+            <span class="tag tag-green">Delta Lake</span>
+            <span class="tag tag-green">Data Contract</span>
+            <span class="tag tag-green">Schema Registry</span>
+            <span class="tag tag-green">Lineage</span>
+          </div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="star-body">
+        <div class="star-section">
+          <label>🎯 Situation</label>
+          <p>Bad weather data reached production dashboards twice in one month — once due to a sensor sending Celsius instead of Kelvin, once due to a missing timezone conversion. Each incident took 6+ hours to detect and 2 days to fully backfill. No data validation existed between ingestion and analytics.</p>
+        </div>
+        <div class="star-section">
+          <label>📋 Task</label>
+          <p>Build a comprehensive data quality framework that validates data at ingestion, enforces schemas, tracks lineage, and prevents bad data from reaching consumers. Must not add >5 min to pipeline runtime.</p>
+        </div>
+        <div class="star-section">
+          <label>⚡ Action</label>
+          <ul>
+            <li>Implemented <strong>Great Expectations</strong> suites for each data source — schema, range, uniqueness, referential integrity checks</li>
+            <li>Built <strong>Delta Lake constraints</strong> (CHECK, NOT NULL) enforced at write time</li>
+            <li>Created <strong>data contracts</strong> — JSON Schema + Pydantic models shared between producer and consumer teams</li>
+            <li>Implemented <strong>schema registry</strong> (AWS Glue Schema Registry) for Kafka topics; backward compatibility enforced</li>
+            <li>Added <strong>data lineage tracking</strong> — OpenLineage integration showing source → transform → destination</li>
+            <li>Built <strong>quality scorecards</strong> — per-dataset health score (0-100) visible in Grafana</li>
+            <li>Set up <strong>auto-quarantine</strong> — failed rows written to quarantine table with failure reason; alerts to data owners</li>
+            <li>Implemented <strong>data diff</strong> — compared today's data vs. 7-day rolling average; flagged anomalies</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🏆 Result</label>
+          <ul>
+            <li>Bad data detected <strong>at ingestion</strong> — zero incidents in production for 8 months</li>
+            <li>Validation overhead: <strong>+3 min</strong> (under 5 min target)</li>
+            <li>Data owner response time to quarantine alerts: <strong>&lt;30 min average</strong></li>
+            <li>Data quality score across all datasets: <strong>96/100</strong></li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>⚠️ Failure Modes & Mitigations</label>
+          <ul>
+            <li><strong>Validation too strict (false positives):</strong> Started with warn-only mode; tuned thresholds over 2 weeks before enforcing</li>
+            <li><strong>Schema evolution breaking consumers:</strong> Required backward-compatible changes; major versions needed approval</li>
+            <li><strong>Lineage gaps in custom transforms:</strong> Added manual annotations for Spark UDFs; automated for standard ops</li>
+            <li><strong>Quarantine table growing unbounded:</strong> TTL policy — auto-delete after 30 days; archive to S3 before deletion</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>🛡️ Prevention Strategies</label>
+          <ul>
+            <li><strong>Shift-left testing</strong> — data contracts validated in CI before deployment</li>
+            <li><strong>Producer accountability</strong> — data quality metrics in team OKRs</li>
+            <li><strong>Data freshness SLAs</strong> — alerts if data is >15 min stale for real-time pipelines</li>
+            <li><strong>Immutable raw data</strong> — raw layer never modified; all transformations on bronze/silver/gold layers</li>
+          </ul>
+        </div>
+        <div class="star-section">
+          <label>👥 Leadership & Collaboration</label>
+          <ul>
+            <li>Led data governance council with representatives from analytics, ML, and platform teams</li>
+            <li>Created data quality playbook and onboarding for new data producers</li>
+            <li>Advocated for data contracts as first-class citizens in architecture reviews</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- end star-grid -->
+</div> <!-- end star panel -->
+
+<!-- ==================== CODE SNIPPETS ==================== -->
+<div id="code" class="panel">
+  <input type="text" class="search-box" id="codeSearch" placeholder="🔍 Search code by language or topic..." onkeyup="filterCode()">
+
+  <!-- PYTHON PATTERNS -->
+  <div class="card code-card" data-tags="python async context-manager decorator">
+    <h3>🐍 Python — Advanced Patterns</h3>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Async Context Manager + Retry with Exponential Backoff</span></div>
+      <div class="code-body">
+<pre><span class="cm"># Production-grade async HTTP client with circuit breaker + retry</span>
+<span class="kw">import</span> asyncio
+<span class="kw">from</span> contextlib <span class="kw">import</span> asynccontextmanager
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+<span class="kw">from</span> typing <span class="kw">import</span> Optional, Callable
+<span class="kw">import</span> aiohttp
+<span class="kw">import</span> time
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="fn">CircuitBreaker</span>:
+    failure_threshold: <span class="fn">int</span> = <span class="num">5</span>
+    recovery_timeout: <span class="fn">float</span> = <span class="num">30.0</span>
+    _failures: <span class="fn">int</span> = <span class="num">0</span>
+    _last_failure_time: Optional[<span class="fn">float</span>] = <span class="kw">None</span>
+    _state: <span class="fn">str</span> = <span class="str">"CLOSED"</span>
+
+    <span class="kw">def</span> <span class="fn">can_execute</span>(<span class="kw">self</span>) -> <span class="fn">bool</span>:
+        <span class="kw">if</span> <span class="kw">self</span>._state == <span class="str">"OPEN"</span>:
+            <span class="kw">if</span> time.time() - <span class="kw">self</span>._last_failure_time > <span class="kw">self</span>.recovery_timeout:
+                <span class="kw">self</span>._state = <span class="str">"HALF_OPEN"</span>
+                <span class="kw">return</span> <span class="kw">True</span>
+            <span class="kw">return</span> <span class="kw">False</span>
+        <span class="kw">return</span> <span class="kw">True</span>
+
+    <span class="kw">def</span> <span class="fn">record_success</span>(<span class="kw">self</span>):
+        <span class="kw">self</span>._failures = <span class="num">0</span>
+        <span class="kw">self</span>._state = <span class="str">"CLOSED"</span>
+
+    <span class="kw">def</span> <span class="fn">record_failure</span>(<span class="kw">self</span>):
+        <span class="kw">self</span>._failures += <span class="num">1</span>
+        <span class="kw">self</span>._last_failure_time = time.time()
+        <span class="kw">if</span> <span class="kw">self</span>._failures >= <span class="kw">self</span>.failure_threshold:
+            <span class="kw">self</span>._state = <span class="str">"OPEN"</span>
+
+<span class="kw">async def</span> <span class="fn">retry_with_backoff</span>(
+    fn: Callable, max_retries: <span class="fn">int</span> = <span class="num">3</span>, base_delay: <span class="fn">float</span> = <span class="num">1.0</span>,
+    max_delay: <span class="fn">float</span> = <span class="num">60.0</span>, exceptions: <span class="fn">tuple</span> = (Exception,)
+):
+    <span class="cm">"""Exponential backoff with jitter for resilient API calls."""</span>
+    <span class="kw">for</span> attempt <span class="kw">in</span> <span class="fn">range</span>(max_retries + <span class="num">1</span>):
+        <span class="kw">try</span>:
+            <span class="kw">return await</span> fn()
+        <span class="kw">except</span> exceptions <span class="kw">as</span> e:
+            <span class="kw">if</span> attempt == max_retries:
+                <span class="kw">raise</span>
+            delay = <span class="fn">min</span>(base_delay * (<span class="num">2</span> ** attempt), max_delay)
+            jitter = delay * (<span class="num">0.5</span> + <span class="fn">random</span>.random() * <span class="num">0.5</span>)
+            <span class="kw">await</span> asyncio.sleep(jitter)
+
+<span class="kw">class</span> <span class="fn">ResilientWeatherClient</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, api_key: <span class="fn">str</span>):
+        <span class="kw">self</span>.api_key = api_key
+        <span class="kw">self</span>._breaker = CircuitBreaker()
+        <span class="kw">self</span>._session: Optional[aiohttp.ClientSession] = <span class="kw">None</span>
+
+    <span class="kw">@asynccontextmanager</span>
+    <span class="kw">async def</span> <span class="fn">session</span>(<span class="kw">self</span>):
+        <span class="cm"># Connection pooling + keep-alive for high-throughput</span>
+        connector = aiohttp.TCPConnector(
+            limit=<span class="num">100</span>, limit_per_host=<span class="num">20</span>,
+            ttl_dns_cache=<span class="num">300</span>, use_dns_cache=<span class="kw">True</span>
+        )
+        timeout = aiohttp.ClientTimeout(total=<span class="num">30</span>, connect=<span class="num">5</span>)
+        <span class="kw">self</span>._session = aiohttp.ClientSession(
+            connector=connector, timeout=timeout,
+            headers={<span class="str">"Authorization"</span>: <span class="str">f"Bearer {self.api_key}"</span>}
+        )
+        <span class="kw">try</span>:
+            <span class="kw">yield</span> <span class="kw">self</span>._session
+        <span class="kw">finally</span>:
+            <span class="kw">await</span> <span class="kw">self</span>._session.close()
+            <span class="kw">self</span>._session = <span class="kw">None</span>
+
+    <span class="kw">async def</span> <span class="fn">fetch_forecast</span>(<span class="kw">self</span>, lat: <span class="fn">float</span>, lon: <span class="fn">float</span>) -> <span class="fn">dict</span>:
+        <span class="kw">if not</span> <span class="kw">self</span>._breaker.can_execute():
+            <span class="kw">raise</span> RuntimeError(<span class="str">"Circuit breaker is OPEN"</span>)
+
+        <span class="kw">async def</span> <span class="fn">_call</span>():
+            url = <span class="str">f"https://api.weather.com/v1/forecast?lat={lat}&lon={lon}"</span>
+            <span class="kw">async with</span> <span class="kw">self</span>._session.get(url) <span class="kw">as</span> resp:
+                resp.raise_for_status()
+                <span class="kw">return await</span> resp.json()
+
+        <span class="kw">try</span>:
+            result = <span class="kw">await</span> retry_with_backoff(
+                _call, max_retries=<span class="num">3</span>,
+                exceptions=(aiohttp.ClientError, asyncio.TimeoutError)
+            )
+            <span class="kw">self</span>._breaker.record_success()
+            <span class="kw">return</span> result
+        <span class="kw">except</span> Exception:
+            <span class="kw">self</span>._breaker.record_failure()
+            <span class="kw">raise</span></pre>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Decorator — Caching with TTL + Cache Stampede Protection</span></div>
+      <div class="code-body">
+<pre><span class="kw">import</span> functools
+<span class="kw">import</span> hashlib
+<span class="kw">import</span> time
+<span class="kw">from</span> threading <span class="kw">import</span> Lock
+
+<span class="kw">class</span> <span class="fn">TTLCache</span>:
+    <span class="cm">"""Thread-safe TTL cache with probabilistic early expiration to prevent stampede."""</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, ttl: <span class="fn">int</span> = <span class="num">300</span>, beta: <span class="fn">float</span> = <span class="num">1.0</span>):
+        <span class="kw">self</span>.ttl = ttl
+        <span class="kw">self</span>.beta = beta  <span class="cm"># higher = more aggressive early refresh</span>
+        <span class="kw">self</span>._cache = {}
+        <span class="kw">self</span>._lock = Lock()
+        <span class="kw">self</span>._refreshing = <span class="fn">set</span>()  <span class="cm"># keys currently being refreshed</span>
+
+    <span class="kw">def</span> <span class="fn">get</span>(<span class="kw">self</span>, key: <span class="fn">str</span>, fetch_fn: Callable):
+        now = time.time()
+        <span class="kw">with</span> <span class="kw">self</span>._lock:
+            <span class="kw">if</span> key <span class="kw">in</span> <span class="kw">self</span>._cache:
+                value, expiry = <span class="kw">self</span>._cache[key]
+                <span class="cm"># Probabilistic early expiration (XFetch algorithm)</span>
+                delta = now - (expiry - <span class="kw">self</span>.ttl)
+                ttl_remaining = expiry - now
+                <span class="kw">if</span> ttl_remaining > <span class="num">0</span>:
+                    <span class="cm"># Chance to refresh early increases as expiry approaches</span>
+                    prob = <span class="fn">exp</span>(-<span class="kw">self</span>.beta * ttl_remaining / delta)
+                    <span class="kw">if</span> random.random() > prob:
+                        <span class="kw">return</span> value
+                <span class="cm"># Key expired or chosen for early refresh</span>
+                <span class="kw">if</span> key <span class="kw">in</span> <span class="kw">self</span>._refreshing:
+                    <span class="kw">return</span> value  <span class="cm"># Return stale while another thread refreshes</span>
+                <span class="kw">self</span>._refreshing.add(key)
+
+        <span class="cm"># Fetch outside lock</span>
+        <span class="kw">try</span>:
+            new_value = fetch_fn()
+            <span class="kw">with</span> <span class="kw">self</span>._lock:
+                <span class="kw">self</span>._cache[key] = (new_value, now + <span class="kw">self</span>.ttl)
+            <span class="kw">return</span> new_value
+        <span class="kw">finally</span>:
+            <span class="kw">with</span> <span class="kw">self</span>._lock:
+                <span class="kw">self</span>._refreshing.discard(key)
+
+<span class="kw">def</span> <span class="fn">cached_weather</span>(ttl: <span class="fn">int</span> = <span class="num">300</span>):
+    cache = TTLCache(ttl=ttl)
+    <span class="kw">def</span> <span class="fn">decorator</span>(fn):
+        <span class="kw">@functools.wraps</span>(fn)
+        <span class="kw">def</span> <span class="fn">wrapper</span>(*args, **kwargs):
+            key = hashlib.sha256(
+                <span class="fn">f"{fn.__name__}:{args}:{kwargs}"</span>.encode()
+            ).hexdigest()
+            <span class="kw">return</span> cache.get(key, <span class="kw">lambda</span>: fn(*args, **kwargs))
+        <span class="kw">return</span> wrapper
+    <span class="kw">return</span> decorator
+
+<span class="cm"># Usage</span>
+<span class="kw">@cached_weather</span>(ttl=<span class="num">600</span>)
+<span class="kw">def</span> <span class="fn">get_forecast</span>(city: <span class="fn">str</span>) -> <span class="fn">dict</span>:
+    <span class="cm"># Expensive API call</span>
+    <span class="kw">return</span> weather_api.fetch(city)</pre>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Structured Logging + Correlation ID Middleware</span></div>
+      <div class="code-body">
+<pre><span class="kw">import</span> logging
+<span class="kw">import</span> uuid
+<span class="kw">from</span> contextvars <span class="kw">import</span> ContextVar
+<span class="kw">from</span> fastapi <span class="kw">import</span> Request
+
+<span class="cm"># Context-local storage for correlation IDs</span>
+correlation_id: ContextVar[<span class="fn">str</span>] = ContextVar(<span class="str">"correlation_id"</span>)
+
+<span class="kw">class</span> <span class="fn">JSONFormatter</span>(logging.Formatter):
+    <span class="kw">def</span> <span class="fn">format</span>(<span class="kw">self</span>, record):
+        log_obj = {
+            <span class="str">"timestamp"</span>: <span class="kw">self</span>.formatTime(record),
+            <span class="str">"level"</span>: record.levelname,
+            <span class="str">"logger"</span>: record.name,
+            <span class="str">"message"</span>: record.getMessage(),
+            <span class="str">"correlation_id"</span>: correlation_id.get(<span class="kw">None</span>),
+            <span class="str">"path"</span>: <span class="fn">getattr</span>(record, <span class="str">"pathname"</span>, <span class="kw">None</span>),
+            <span class="str">"function"</span>: <span class="fn">getattr</span>(record, <span class="str">"funcName"</span>, <span class="kw">None</span>),
+        }
+        <span class="kw">if</span> record.exc_info:
+            log_obj[<span class="str">"exception"</span>] = <span class="kw">self</span>.formatException(record.exc_info)
+        <span class="kw">return</span> json.dumps(log_obj, default=<span class="fn">str</span>)
+
+<span class="cm"># FastAPI middleware</span>
+<span class="kw">async def</span> <span class="fn">correlation_middleware</span>(request: Request, call_next):
+    cid = request.headers.get(<span class="str">"X-Correlation-ID"</span>, <span class="fn">str</span>(uuid.uuid4()))
+    token = correlation_id.<span class="fn">set</span>(cid)
+    <span class="kw">try</span>:
+        response = <span class="kw">await</span> call_next(request)
+        response.headers[<span class="str">"X-Correlation-ID"</span>] = cid
+        <span class="kw">return</span> response
+    <span class="kw">finally</span>:
+        correlation_id.reset(token)</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERRAFORM PATTERNS -->
+  <div class="card code-card" data-tags="terraform aws modules state">
+    <h3>🏗️ Terraform — Production Patterns</h3>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Reusable Lambda Module with Conditional Features</span></div>
+      <div class="code-body">
+<pre><span class="cm"># modules/lambda/main.tf</span>
+<span class="kw">variable</span> <span class="str">"function_name"</span> { <span class="kw">type</span> = <span class="fn">string</span> }
+<span class="kw">variable</span> <span class="str">"handler"</span> { <span class="kw">type</span> = <span class="fn">string</span> }
+<span class="kw">variable</span> <span class="str">"runtime"</span> { <span class="kw">type</span> = <span class="fn">string</span>; <span class="kw">default</span> = <span class="str">"python3.11"</span> }
+<span class="kw">variable</span> <span class="str">"memory_size"</span> { <span class="kw">type</span> = <span class="fn">number</span>; <span class="kw">default</span> = <span class="num">512</span> }
+<span class="kw">variable</span> <span class="str">"timeout"</span> { <span class="kw">type</span> = <span class="fn">number</span>; <span class="kw">default</span> = <span class="num">30</span> }
+<span class="kw">variable</span> <span class="str">"enable_dlq"</span> { <span class="kw">type</span> = <span class="fn">bool</span>; <span class="kw">default</span> = <span class="kw">true</span> }
+<span class="kw">variable</span> <span class="str">"vpc_config"</span> { <span class="kw">type</span> = <span class="fn">any</span>; <span class="kw">default</span> = <span class="kw">null</span> }
+<span class="kw">variable</span> <span class="str">"environment_variables"</span> { <span class="kw">type</span> = <span class="fn">map(string)</span>; <span class="kw">default</span> = {} }
+<span class="kw">variable</span> <span class="str">"layers"</span> { <span class="kw">type</span> = <span class="fn">list(string)</span>; <span class="kw">default</span> = [] }
+
+<span class="cm"># Dead Letter Queue for failed async invocations</span>
+<span class="kw">resource</span> <span class="str">"aws_sqs_queue"</span> <span class="str">"dlq"</span> {
+  <span class="kw">count</span> = <span class="fn">var.enable_dlq</span> ? <span class="num">1</span> : <span class="num">0</span>
+  <span class="kw">name</span> = <span class="str">"${var.function_name}-dlq"</span>
+  <span class="kw">message_retention_seconds</span> = <span class="num">1209600</span>  <span class="cm"># 14 days</span>
+  <span class="kw">kms_master_key_id</span> = <span class="str">"alias/aws/sqs"</span>
+}
+
+<span class="kw">resource</span> <span class="str">"aws_lambda_function"</span> <span class="str">"this"</span> {
+  <span class="kw">function_name</span> = <span class="fn">var.function_name</span>
+  <span class="kw">handler</span>       = <span class="fn">var.handler</span>
+  <span class="kw">runtime</span>       = <span class="fn">var.runtime</span>
+  <span class="kw">memory_size</span>   = <span class="fn">var.memory_size</span>
+  <span class="kw">timeout</span>       = <span class="fn">var.timeout</span>
+  <span class="kw">filename</span>      = <span class="fn">data.archive_file.lambda.output_path</span>
+  <span class="kw">source_code_hash</span> = <span class="fn">data.archive_file.lambda.output_base64sha256</span>
+  <span class="kw">role</span>          = <span class="fn">aws_iam_role.lambda.arn</span>
+  <span class="kw">layers</span>        = <span class="fn">var.layers</span>
+
+  <span class="kw">dynamic</span> <span class="str">"vpc_config"</span> {
+    <span class="kw">for_each</span> = <span class="fn">var.vpc_config</span> != <span class="kw">null</span> ? [<span class="fn">var.vpc_config</span>] : []
+    <span class="kw">content</span> {
+      <span class="kw">subnet_ids</span>         = <span class="fn">vpc_config.value.subnet_ids</span>
+      <span class="kw">security_group_ids</span> = <span class="fn">vpc_config.value.security_group_ids</span>
+    }
+  }
+
+  <span class="kw">environment</span> {
+    <span class="kw">variables</span> = <span class="fn">merge</span>(
+      <span class="fn">var.environment_variables</span>,
+      { <span class="str">"AWS_NODEJS_CONNECTION_REUSE_ENABLED"</span> = <span class="str">"1"</span> }
+    )
+  }
+
+  <span class="kw">dead_letter_config</span> {
+    <span class="kw">target_arn</span> = <span class="fn">var.enable_dlq</span> ? <span class="fn">aws_sqs_queue.dlq[0].arn</span> : <span class="kw">null</span>
+  }
+
+  <span class="kw">tracing_config</span> {
+    <span class="kw">mode</span> = <span class="str">"Active"</span>  <span class="cm"># X-Ray distributed tracing</span>
+  }
+
+  <span class="kw">reserved_concurrent_executions</span> = <span class="num">100</span>  <span class="cm"># Prevent runaway scaling</span>
+
+  <span class="kw">lifecycle</span> {
+    <span class="kw">ignore_changes</span> = [<span class="str">"filename"</span>, <span class="str">"source_code_hash"</span>]
+  }
+}
+
+<span class="cm"># CloudWatch Alarm for DLQ depth</span>
+<span class="kw">resource</span> <span class="str">"aws_cloudwatch_metric_alarm"</span> <span class="str">"dlq_depth"</span> {
+  <span class="kw">count</span> = <span class="fn">var.enable_dlq</span> ? <span class="num">1</span> : <span class="num">0</span>
+  <span class="kw">alarm_name</span>          = <span class="str">"${var.function_name}-dlq-depth"</span>
+  <span class="kw">comparison_operator</span> = <span class="str">"GreaterThanThreshold"</span>
+  <span class="kw">evaluation_periods</span>  = <span class="num">2</span>
+  <span class="kw">metric_name</span>         = <span class="str">"ApproximateNumberOfMessagesVisible"</span>
+  <span class="kw">namespace</span>           = <span class="str">"AWS/SQS"</span>
+  <span class="kw">period</span>              = <span class="num">300</span>
+  <span class="kw">statistic</span>           = <span class="str">"Average"</span>
+  <span class="kw">threshold</span>           = <span class="num">10</span>
+  <span class="kw">alarm_description</span>   = <span class="str">"DLQ has messages - investigate lambda failures"</span>
+  <span class="kw">dimensions</span> = {
+    <span class="str">"QueueName"</span> = <span class="fn">aws_sqs_queue.dlq[0].name</span>
+  }
+}</pre>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Multi-Environment Terragrunt Configuration</span></div>
+      <div class="code-body">
+<pre><span class="cm"># terragrunt.hcl (root)</span>
+<span class="kw">locals</span> {
+  <span class="kw">environment</span> = <span class="fn">path_relative_to_include()</span>
+  <span class="kw">common_vars</span> = <span class="fn">yamldecode</span>(<span class="fn">file</span>(<span class="str">"${get_terragrunt_dir()}/../common.yaml"</span>))
+}
+
+<span class="kw">remote_state</span> {
+  <span class="kw">backend</span> = <span class="str">"s3"</span>
+  <span class="kw">config</span> = {
+    <span class="kw">bucket</span>         = <span class="str">"wetter-terraform-state-${local.environment}"</span>
+    <span class="kw">key</span>            = <span class="str">"${path_relative_to_include()}/terraform.tfstate"</span>
+    <span class="kw">region</span>         = <span class="str">"eu-central-1"</span>
+    <span class="kw">encrypt</span>        = <span class="kw">true</span>
+    <span class="kw">dynamodb_table</span> = <span class="str">"wetter-terraform-locks"</span>
+  }
+  <span class="kw">generate</span> = {
+    <span class="kw">path</span>      = <span class="str">"backend.tf"</span>
+    <span class="kw">if_exists</span> = <span class="str">"overwrite_terragrunt"</span>
+  }
+}
+
+<span class="kw">generate</span> <span class="str">"provider"</span> {
+  <span class="kw">path</span>      = <span class="str">"provider.tf"</span>
+  <span class="kw">if_exists</span> = <span class="str">"overwrite_terragrunt"</span>
+  <span class="kw">contents</span>  = <span class="str">&lt;&lt;EOF
+provider "aws" {
+  region = "eu-central-1"
+  default_tags {
+    tags = {
+      Environment = "${local.environment}"
+      ManagedBy   = "Terraform"
+      Project     = "Wetter-Platform"
+    }
+  }
+}
+EOF</span>
+}
+
+<span class="cm"># environments/prod/lambda-ingestion/terragrunt.hcl</span>
+<span class="kw">include</span> <span class="str">"root"</span> {
+  <span class="kw">path</span> = <span class="fn">find_in_parent_folders</span>()
+}
+
+<span class="kw">terraform</span> {
+  <span class="kw">source</span> = <span class="str">"../../../modules//lambda"</span>
+}
+
+<span class="kw">inputs</span> = {
+  <span class="kw">function_name</span>       = <span class="str">"weather-ingestion-prod"</span>
+  <span class="kw">handler</span>             = <span class="str">"main.handler"</span>
+  <span class="kw">memory_size</span>         = <span class="num">2048</span>
+  <span class="kw">timeout</span>             = <span class="num">60</span>
+  <span class="kw">enable_dlq</span>          = <span class="kw">true</span>
+  <span class="kw">environment_variables</span> = {
+    <span class="str">"LOG_LEVEL"</span>       = <span class="str">"INFO"</span>
+    <span class="str">"STAGE"</span>           = <span class="str">"production"</span>
+    <span class="str">"DB_POOL_SIZE"</span>  = <span class="str">"20"</span>
+  }
+  <span class="kw">layers</span> = [
+    <span class="str">"arn:aws:lambda:eu-central-1:123456789:layer:common-libs:3"</span>
+  ]
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- AWS SERVERLESS PATTERNS -->
+  <div class="card code-card" data-tags="aws lambda step-functions eventbridge serverless">
+    <h3>☁️ AWS Serverless — Event-Driven Architecture</h3>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Step Functions State Machine — Weather Data Processing</span></div>
+      <div class="code-body">
+<pre><span class="cm"># step-functions/weather-pipeline.asl.json</span>
+{
+  <span class="str">"Comment"</span>: <span class="str">"Weather Data Ingestion Pipeline"</span>,
+  <span class="str">"StartAt"</span>: <span class="str">"ValidateInput"</span>,
+  <span class="str">"States"</span>: {
+    <span class="str">"ValidateInput"</span>: {
+      <span class="str">"Type"</span>: <span class="str">"Task"</span>,
+      <span class="str">"Resource"</span>: <span class="str">"arn:aws:lambda:...:function:validate-input"</span>,
+      <span class="str">"Next"</span>: <span class="str">"CheckFileSize"</span>,
+      <span class="str">"Catch"</span>: [{
+        <span class="str">"ErrorEquals"</span>: [<span class="str">"ValidationException"</span>],
+        <span class="str">"Next"</span>: <span class="str">"SendToDLQ"</span>
+      }],
+      <span class="str">"ResultPath"</span>: <span class="str">"$.validation"</span>
+    },
+    <span class="str">"CheckFileSize"</span>: {
+      <span class="str">"Type"</span>: <span class="str">"Choice"</span>,
+      <span class="str">"Choices"</span>: [
+        {
+          <span class="str">"Variable"</span>: <span class="str">"$.validation.file_size_mb"</span>,
+          <span class="str">"NumericGreaterThan"</span>: <span class="num">25</span>,
+          <span class="str">"Next"</span>: <span class="str">"ChunkAndProcess"</span>
+        }
+      ],
+      <span class="str">"Default"</span>: <span class="str">"ProcessSingleFile"</span>
+    },
+    <span class="str">"ChunkAndProcess"</span>: {
+      <span class="str">"Type"</span>: <span class="str">"Map"</span>,
+      <span class="str">"ItemsPath"</span>: <span class="str">"$.validation.chunks"</span>,
+      <span class="str">"MaxConcurrency"</span>: <span class="num">10</span>,
+      <span class="str">"Iterator"</span>: {
+        <span class="str">"StartAt"</span>: <span class="str">"ProcessChunk"</span>,
+        <span class="str">"States"</span>: {
+          <span class="str">"ProcessChunk"</span>: {
+            <span class="str">"Type"</span>: <span class="str">"Task"</span>,
+            <span class="str">"Resource"</span>: <span class="str">"arn:aws:lambda:...:function:process-chunk"</span>,
+            <span class="str">"Retry"</span>: [{
+              <span class="str">"ErrorEquals"</span>: [<span class="str">"Lambda.ServiceException"</span>, <span class="str">"Lambda.SdkClientException"</span>],
+              <span class="str">"IntervalSeconds"</span>: <span class="num">2</span>,
+              <span class="str">"MaxAttempts"</span>: <span class="num">3</span>,
+              <span class="str">"BackoffRate"</span>: <span class="num">2</span>
+            }],
+            <span class="str">"End"</span>: <span class="kw">true</span>
+          }
+        }
+      },
+      <span class="str">"Next"</span>: <span class="str">"MergeResults"</span>
+    },
+    <span class="str">"ProcessSingleFile"</span>: {
+      <span class="str">"Type"</span>: <span class="str">"Task"</span>,
+      <span class="str">"Resource"</span>: <span class="str">"arn:aws:lambda:...:function:process-file"</span>,
+      <span class="str">"Next"</span>: <span class="str">"MergeResults"</span>
+    },
+    <span class="str">"MergeResults"</span>: {
+      <span class="str">"Type"</span>: <span class="str">"Task"</span>,
+      <span class="str">"Resource"</span>: <span class="str">"arn:aws:lambda:...:function:merge-results"</span>,
+      <span class="str">"Next"</span>: <span class="str">"PublishToEventBridge"</span>
+    },
+    <span class="str">"PublishToEventBridge"</span>: {
+      <span class="str">"Type"</span>: <span class="str">"Task"</span>,
+      <span class="str">"Resource"</span>: <span class="str">"arn:aws:states:::events:putEvents"</span>,
+      <span class="str">"Parameters"</span>: {
+        <span class="str">"Entries"</span>: [{
+          <span class="str">"Detail"</span>: <span class="str">"$.merged_result"</span>,
+          <span class="str">"DetailType"</span>: <span class="str">"weather.data.processed"</span>,
+          <span class="str">"EventBusName"</span>: <span class="str">"weather-events"</span>,
+          <span class="str">"Source"</span>: <span class="str">"weather.ingestion"</span>
+        }]
+      },
+      <span class="str">"End"</span>: <span class="kw">true</span>
+    },
+    <span class="str">"SendToDLQ"</span>: {
+      <span class="str">"Type"</span>: <span class="str">"Task"</span>,
+      <span class="str">"Resource"</span>: <span class="str">"arn:aws:states:::sqs:sendMessage"</span>,
+      <span class="str">"Parameters"</span>: {
+        <span class="str">"QueueUrl"</span>: <span class="str">"https://sqs.../weather-dlq"</span>,
+        <span class="str">"MessageBody"</span>: <span class="str">"$"</span>
+      },
+      <span class="str">"End"</span>: <span class="kw">true</span>
+    }
+  }
+}</pre>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">EventBridge Rule + Target with Input Transformation</span></div>
+      <div class="code-body">
+<pre><span class="cm"># eventbridge.tf</span>
+<span class="kw">resource</span> <span class="str">"aws_cloudwatch_event_rule"</span> <span class="str">"weather_alert"</span> {
+  <span class="kw">name</span>        = <span class="str">"weather-alert-critical"</span>
+  <span class="kw">description</span> = <span class="str">"Trigger on critical weather alerts"</span>
+  <span class="kw">event_bus_name</span> = <span class="fn">aws_cloudwatch_event_bus.weather.name</span>
+
+  <span class="kw">event_pattern</span> = <span class="fn">jsonencode</span>({
+    <span class="str">"source"</span>      = [<span class="str">"weather.ingestion"</span>],
+    <span class="str">"detail-type"</span> = [<span class="str">"weather.data.processed"</span>],
+    <span class="str">"detail"</span> = {
+      <span class="str">"severity"</span> = [<span class="str">"CRITICAL"</span>, <span class="str">"HIGH"</span>],
+      <span class="str">"region"</span>   = [<span class="str">"EU"</span>, <span class="str">"NA"</span>]
+    }
+  })
+}
+
+<span class="cm"># Input transformer: enrich event before sending to Lambda</span>
+<span class="kw">resource</span> <span class="str">"aws_cloudwatch_event_target"</span> <span class="str">"alert_processor"</span> {
+  <span class="kw">rule</span>      = <span class="fn">aws_cloudwatch_event_rule.weather_alert.name</span>
+  <span class="kw">target_id</span> = <span class="str">"AlertProcessor"</span>
+  <span class="kw">arn</span>       = <span class="fn">aws_lambda_function.alert_processor.arn</span>
+
+  <span class="kw">input_transformer</span> {
+    <span class="kw">input_paths</span> = {
+      <span class="str">"severity"</span>  = <span class="str">"$.detail.severity"</span>
+      <span class="str">"region"</span>    = <span class="str">"$.detail.region"</span>
+      <span class="str">"timestamp"</span> = <span class="str">"$.time"</span>
+      <span class="str">"alert_id"</span>  = <span class="str">"$.id"</span>
+    }
+    <span class="kw">input_template</span> = <span class="str">&lt;&lt;EOF
+{
+  "alert_type": "weather_critical",
+  "severity": &lt;severity&gt;,
+  "affected_region": &lt;region&gt;,
+  "detected_at": &lt;timestamp&gt;,
+  "correlation_id": &lt;alert_id&gt;,
+  "action_required": true
+}
+EOF</span>
+  }
+}
+
+<span class="cm"># EventBridge Archive for replay/debugging</span>
+<span class="kw">resource</span> <span class="str">"aws_cloudwatch_event_archive"</span> <span class="str">"weather_events"</span> {
+  <span class="kw">name</span>             = <span class="str">"weather-event-archive"</span>
+  <span class="kw">event_source_arn</span> = <span class="fn">aws_cloudwatch_event_bus.weather.arn</span>
+  <span class="kw">retention_days</span>   = <span class="num">30</span>
+}</pre>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Lambda Powertools — Production Observability</span></div>
+      <div class="code-body">
+<pre><span class="cm"># Python Lambda with AWS Lambda Powertools</span>
+<span class="kw">from</span> aws_lambda_powertools <span class="kw">import</span> Logger, Tracer, Metrics
+<span class="kw">from</span> aws_lambda_powertools.metrics <span class="kw">import</span> MetricUnit
+<span class="kw">from</span> aws_lambda_powertools.middleware_factory <span class="kw">import</span> lambda_handler_decorator
+<span class="kw">from</span> aws_lambda_powertools.utilities.typing <span class="kw">import</span> LambdaContext
+<span class="kw">from</span> aws_lambda_powertools.utilities.validation <span class="kw">import</span> validate
+<span class="kw">import</span> json
+
+logger = Logger()
+tracer = Tracer()
+metrics = Metrics()
+
+<span class="cm"># JSON Schema for input validation</span>
+SCHEMA = {
+    <span class="str">"type"</span>: <span class="str">"object"</span>,
+    <span class="str">"properties"</span>: {
+        <span class="str">"station_id"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>, <span class="str">"pattern"</span>: <span class="str">"^ST-[A-Z0-9]{6}$"</span>},
+        <span class="str">"temperature"</span>: {<span class="str">"type"</span>: <span class="str">"number"</span>, <span class="str">"minimum"</span>: -<span class="num">100</span>, <span class="str">"maximum"</span>: <span class="num">100</span>},
+        <span class="str">"timestamp"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>, <span class="str">"format"</span>: <span class="str">"date-time"</span>}
+    },
+    <span class="str">"required"</span>: [<span class="str">"station_id"</span>, <span class="str">"temperature"</span>, <span class="str">"timestamp"</span>]
+}
+
+<span class="kw">@lambda_handler_decorator</span>(trace_execution=<span class="kw">True</span>)
+<span class="kw">def</span> <span class="fn">middleware_handler</span>(handler, event, context):
+    <span class="cm"># Custom middleware: add request ID to all logs</span>
+    <span class="kw">with</span> logger.append_keys(request_id=context.aws_request_id):
+        <span class="kw">return</span> handler(event, context)
+
+<span class="kw">@logger.inject_lambda_context</span>(log_event=<span class="kw">True</span>)
+<span class="kw">@tracer.capture_lambda_handler</span>
+<span class="kw">@metrics.log_metrics</span>(capture_cold_start_metric=<span class="kw">True</span>)
+<span class="kw">@middleware_handler</span>
+<span class="kw">def</span> <span class="fn">lambda_handler</span>(event, context: LambdaContext):
+    <span class="cm"># Validate input against schema</span>
+    validate(event=event, schema=SCHEMA)
+
+    station_id = event[<span class="str">"station_id"</span>]
+    temperature = event[<span class="str">"temperature"</span>]
+
+    <span class="cm"># Business logic with structured logging</span>
+    <span class="kw">with</span> logger.append_keys(station_id=station_id):
+        logger.info(<span class="str">"Processing weather reading"</span>, extra={
+            <span class="str">"temperature"</span>: temperature,
+            <span class="str">"unit"</span>: <span class="str">"celsius"</span>
+        })
+
+        <span class="cm"># Detect anomalies</span>
+        <span class="kw">if</span> temperature > <span class="num">45</span> <span class="kw">or</span> temperature < <span class="num">-40</span>:
+            logger.warning(<span class="str">"Extreme temperature detected"</span>)
+            metrics.add_metric(name=<span class="str">"ExtremeTemperatureAlert"</span>, unit=MetricUnit.Count, value=<span class="num">1</span>)
+
+        <span class="cm"># Write to DynamoDB with idempotency</span>
+        <span class="kw">with</span> tracer.capture_method(<span class="str">"write_to_db"</span>):
+            result = write_reading(station_id, temperature, event[<span class="str">"timestamp"</span>])
+
+        metrics.add_metric(name=<span class="str">"WeatherReadingProcessed"</span>, unit=MetricUnit.Count, value=<span class="num">1</span>)
+        metrics.add_metric(name=<span class="str">"ProcessingLatency"</span>, unit=MetricUnit.Milliseconds,
+                          value=context.get_remaining_time_in_millis())
+
+    <span class="kw">return</span> {<span class="str">"statusCode"</span>: <span class="num">200</span>, <span class="str">"body"</span>: json.dumps({<span class="str">"id"</span>: result[<span class="str">"id"</span>]})}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPARK / DELTA LAKE -->
+  <div class="card code-card" data-tags="spark pyspark delta-lake optimization databricks">
+    <h3>⚡ Spark / Delta Lake — Performance & Reliability</h3>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Optimized ETL with Adaptive Query Execution + Salting</span></div>
+      <div class="code-body">
+<pre><span class="cm"># PySpark ETL with skew handling, AQE, and Delta optimizations</span>
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> SparkSession
+<span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> col, lit, rand, concat, sha2, current_timestamp
+<span class="kw">from</span> delta.tables <span class="kw">import</span> DeltaTable
+
+<span class="kw">def</span> <span class="fn">create_optimized_session</span>(app_name: <span class="fn">str</span>) -> SparkSession:
+    <span class="kw">return</span> SparkSession.builder         .appName(app_name)         .config(<span class="str">"spark.sql.adaptive.enabled"</span>, <span class="str">"true"</span>)         .config(<span class="str">"spark.sql.adaptive.coalescePartitions.enabled"</span>, <span class="str">"true"</span>)         .config(<span class="str">"spark.sql.adaptive.skewJoin.enabled"</span>, <span class="str">"true"</span>)         .config(<span class="str">"spark.sql.adaptive.skewJoin.skewedPartitionFactor"</span>, <span class="str">"5"</span>)         .config(<span class="str">"spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes"</span>, <span class="str">"256MB"</span>)         .config(<span class="str">"spark.sql.adaptive.coalescePartitions.minPartitionSize"</span>, <span class="str">"1MB"</span>)         .config(<span class="str">"spark.sql.adaptive.coalescePartitions.initialPartitionNum"</span>, <span class="str">"200"</span>)         .config(<span class="str">"spark.databricks.delta.optimizeWrite.enabled"</span>, <span class="str">"true"</span>)         .config(<span class="str">"spark.databricks.delta.autoCompact.enabled"</span>, <span class="str">"true"</span>)         .config(<span class="str">"spark.sql.shuffle.partitions"</span>, <span class="str">"400"</span>)         .getOrCreate()
+
+<span class="kw">def</span> <span class="fn">process_weather_etl</span>(spark: SparkSession):
+    <span class="cm"># Read raw data with partition pruning hint</span>
+    raw_df = spark.read.format(<span class="str">"delta"</span>)         .load(<span class="str">"s3://weather-bucket/bronze/station-readings"</span>)         .filter(col(<span class="str">"ingestion_date"</span>) >= current_timestamp().cast(<span class="str">"date"</span>) - lit(<span class="num">7</span>))
+
+    <span class="cm"># SALTING: Handle skewed station_id distribution</span>
+    <span class="cm"># Add random salt (0-9) to skewed keys, then aggregate in 2 phases</span>
+    SALT_BUCKETS = <span class="num">10</span>
+
+    salted_df = raw_df.withColumn(
+        <span class="str">"salted_station"</span>,
+        concat(col(<span class="str">"station_id"</span>), lit(<span class="str">"_"</span>), (rand() * SALT_BUCKETS).cast(<span class="str">"int"</span>))
+    )
+
+    <span class="cm"># Phase 1: Partial aggregation per salted key</span>
+    partial_agg = salted_df.groupBy(<span class="str">"salted_station"</span>, <span class="str">"date"</span>).agg(
+        <span class="fn">avg</span>(<span class="str">"temperature"</span>).alias(<span class="str">"avg_temp"</span>),
+        <span class="fn">max</span>(<span class="str">"temperature"</span>).alias(<span class="str">"max_temp"</span>),
+        <span class="fn">min</span>(<span class="str">"temperature"</span>).alias(<span class="str">"min_temp"</span>),
+        <span class="fn">count</span>(<span class="str">"*"</span>).alias(<span class="str">"reading_count"</span>)
+    )
+
+    <span class="cm"># Phase 2: Remove salt and final aggregation</span>
+    final_agg = partial_agg.withColumn(
+        <span class="str">"station_id"</span>, <span class="fn">regexp_extract</span>(col(<span class="str">"salted_station"</span>), <span class="str">"^(.+?)_"</span>, <span class="num">1</span>)
+    ).groupBy(<span class="str">"station_id"</span>, <span class="str">"date"</span>).agg(
+        <span class="fn">avg</span>(<span class="str">"avg_temp"</span>).alias(<span class="str">"avg_temperature"</span>),
+        <span class="fn">max</span>(<span class="str">"max_temp"</span>).alias(<span class="str">"max_temperature"</span>),
+        <span class="fn">min</span>(<span class="str">"min_temp"</span>).alias(<span class="str">"min_temperature"</span>),
+        <span class="fn">sum</span>(<span class="str">"reading_count"</span>).alias(<span class="str">"total_readings"</span>)
+    )
+
+    <span class="cm"># Write to Delta with Z-ORDER for query optimization</span>
+    final_agg.write.format(<span class="str">"delta"</span>)         .mode(<span class="str">"merge"</span>)         .option(<span class="str">"mergeSchema"</span>, <span class="str">"true"</span>)         .save(<span class="str">"s3://weather-bucket/silver/daily-aggregates"</span>)
+
+    <span class="cm"># Optimize and Z-ORDER for time-series queries</span>
+    spark.sql(<span class="str">"""
+        OPTIMIZE delta.`s3://weather-bucket/silver/daily-aggregates`
+        ZORDER BY (station_id, date)
+    """</span>)
+
+    <span class="cm"># Vacuum old versions (retain 7 days for time travel)</span>
+    spark.sql(<span class="str">"""
+        VACUUM delta.`s3://weather-bucket/silver/daily-aggregates` RETAIN 168 HOURS
+    """</span>)
+
+    <span class="cm"># Data quality check with constraints</span>
+    spark.sql(<span class="str">"""
+        ALTER TABLE delta.`s3://weather-bucket/silver/daily-aggregates`
+        ADD CONSTRAINT valid_temperature CHECK (avg_temperature BETWEEN -100 AND 100)
+    """</span>)
+
+<span class="cm"># MERGE (UPSERT) pattern for idempotent writes</span>
+<span class="kw">def</span> <span class="fn">upsert_weather_data</span>(spark, new_df, table_path):
+    delta_table = DeltaTable.forPath(spark, table_path)
+
+    delta_table.alias(<span class="str">"target"</span>).merge(
+        new_df.alias(<span class="str">"source"</span>),
+        <span class="str">"target.station_id = source.station_id AND target.date = source.date"</span>
+    ).whenMatchedUpdateAll()      .whenNotMatchedInsertAll()      .execute()</pre>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Structured Streaming with Exactly-Once Semantics</span></div>
+      <div class="code-body">
+<pre><span class="cm"># Kafka → Delta streaming with checkpointing</span>
+stream_df = spark.readStream     .format(<span class="str">"kafka"</span>)     .option(<span class="str">"kafka.bootstrap.servers"</span>, <span class="str">"broker1:9092,broker2:9092"</span>)     .option(<span class="str">"subscribe"</span>, <span class="str">"weather-readings"</span>)     .option(<span class="str">"startingOffsets"</span>, <span class="str">"latest"</span>)     .option(<span class="str">"failOnDataLoss"</span>, <span class="str">"false"</span>)     .option(<span class="str">"kafka.security.protocol"</span>, <span class="str">"SASL_SSL"</span>)     .load()
+
+<span class="cm"># Parse JSON payload with schema enforcement</span>
+<span class="kw">from</span> pyspark.sql.types <span class="kw">import</span> StructType, StructField, StringType, DoubleType, TimestampType
+
+weather_schema = StructType([
+    StructField(<span class="str">"station_id"</span>, StringType(), <span class="kw">False</span>),
+    StructField(<span class="str">"temperature"</span>, DoubleType(), <span class="kw">False</span>),
+    StructField(<span class="str">"humidity"</span>, DoubleType(), <span class="kw">True</span>),
+    StructField(<span class="str">"timestamp"</span>, TimestampType(), <span class="kw">False</span>)
+])
+
+parsed = stream_df.select(
+    <span class="fn">from_json</span>(col(<span class="str">"value"</span>).cast(<span class="str">"string"</span>), weather_schema).alias(<span class="str">"data"</span>),
+    col(<span class="str">"timestamp"</span>).alias(<span class="str">"kafka_timestamp"</span>)
+).select(<span class="str">"data.*"</span>, <span class="str">"kafka_timestamp"</span>)
+
+<span class="cm"># Watermark for late data handling</span>
+watermarked = parsed.withWatermark(<span class="str">"timestamp"</span>, <span class="str">"10 minutes"</span>)
+
+<span class="cm"># Write with exactly-once guarantee (idempotent merge)</span>
+query = watermarked.writeStream     .format(<span class="str">"delta"</span>)     .outputMode(<span class="str">"append"</span>)     .option(<span class="str">"checkpointLocation"</span>, <span class="str">"s3://weather-bucket/checkpoints/streaming"</span>)     .trigger(processingTime=<span class="str">"30 seconds"</span>)     .foreachBatch(<span class="kw">lambda</span> df, batch_id: upsert_weather_data(spark, df, <span class="str">"s3://weather-bucket/silver/realtime"</span>))     .start()</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- API DESIGN -->
+  <div class="card code-card" data-tags="api fastapi openapi webhooks rate-limiting">
+    <h3>🔌 API Design — FastAPI + Webhooks + Rate Limiting</h3>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">FastAPI Production API with Idempotency + Rate Limiting</span></div>
+      <div class="code-body">
+<pre><span class="cm"># api/main.py — Production-grade FastAPI weather API</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Depends, HTTPException, Header, Request, BackgroundTasks
+<span class="kw">from</span> fastapi.middleware.cors <span class="kw">import</span> CORSMiddleware
+<span class="kw">from</span> fastapi.middleware.gzip <span class="kw">import</span> GZipMiddleware
+<span class="kw">from</span> fastapi.responses <span class="kw">import</span> JSONResponse
+<span class="kw">from</span> fastapi.security <span class="kw">import</span> HTTPBearer, HTTPAuthorizationCredentials
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field, validator
+<span class="kw">from</span> redis.asyncio <span class="kw">import</span> Redis
+<span class="kw">from</span> typing <span class="kw">import</span> Optional, List
+<span class="kw">import</span> hmac, hashlib, secrets, time
+
+app = FastAPI(
+    title=<span class="str">"Wetter API"</span>,
+    version=<span class="str">"1.0.0"</span>,
+    docs_url=<span class="str">"/docs"</span>,
+    redoc_url=<span class="str">"/redoc"</span>,
+    openapi_url=<span class="str">"/openapi.json"</span>
+)
+
+<span class="cm"># Middleware stack</span>
+app.add_middleware(GZipMiddleware, minimum_size=<span class="num">1000</span>)
+app.add_middleware(CORSMiddleware, allow_origins=[<span class="str">"https://wetter.com"</span>], allow_credentials=<span class="kw">True</span>)
+
+redis = Redis.from_url(<span class="str">"redis://redis-cluster:6379"</span>, decode_responses=<span class="kw">True</span>)
+
+<span class="cm"># ─── Pydantic Models ───</span>
+<span class="kw">class</span> <span class="fn">ForecastRequest</span>(BaseModel):
+    lat: <span class="fn">float</span> = Field(..., ge=-<span class="num">90</span>, le=<span class="num">90</span>, description=<span class="str">"Latitude"</span>)
+    lon: <span class="fn">float</span> = Field(..., ge=-<span class="num">180</span>, le=<span class="num">180</span>, description=<span class="str">"Longitude"</span>)
+    days: <span class="fn">int</span> = Field(<span class="num">7</span>, ge=<span class="num">1</span>, le=<span class="num">14</span>, description=<span class="str">"Forecast days"</span>)
+    units: <span class="fn">str</span> = Field(<span class="str">"metric"</span>, regex=<span class="str">"^(metric|imperial)$"</span>)
+
+    <span class="kw">@validator</span>(<span class="str">"lat"</span>)
+    <span class="kw">def</span> <span class="fn">validate_land_only</span>(cls, v, values):
+        <span class="cm"># Example: reject coordinates in ocean (simplified)</span>
+        lon = values.get(<span class="str">"lon"</span>)
+        <span class="kw">if</span> v == <span class="num">0</span> <span class="kw">and</span> lon == <span class="num">0</span>:
+            <span class="kw">raise</span> ValueError(<span class="str">"Null Island is not a valid location"</span>)
+        <span class="kw">return</span> v
+
+<span class="kw">class</span> <span class="fn">ForecastResponse</span>(BaseModel):
+    location: <span class="fn">str</span>
+    forecast: List[<span class="fn">dict</span>]
+    generated_at: <span class="fn">str</span>
+    request_id: <span class="fn">str</span>
+
+<span class="cm"># ─── Rate Limiting (Token Bucket) ───</span>
+<span class="kw">async def</span> <span class="fn">rate_limit</span>(request: Request, api_key: <span class="fn">str</span> = Header(..., alias=<span class="str">"X-API-Key"</span>)):
+    <span class="cm"># Tier-based limits: free=100/hr, pro=1000/hr, enterprise=10000/hr</span>
+    tier = <span class="kw">await</span> redis.hget(<span class="str">f"api:tier:{api_key}"</span>, <span class="str">"tier"</span>) <span class="kw">or</span> <span class="str">"free"</span>
+    limits = {<span class="str">"free"</span>: <span class="num">100</span>, <span class="str">"pro"</span>: <span class="num">1000</span>, <span class="str">"enterprise"</span>: <span class="num">10000</span>}
+    limit = limits.get(tier, <span class="num">100</span>)
+
+    key = <span class="str">f"ratelimit:{api_key}:{int(time.time()) // 3600}"</span>
+    current = <span class="kw">await</span> redis.incr(key)
+    <span class="kw">if</span> current == <span class="num">1</span>:
+        <span class="kw">await</span> redis.expire(key, <span class="num">3600</span>)
+
+    <span class="kw">if</span> current > limit:
+        <span class="kw">raise</span> HTTPException(
+            status_code=<span class="num">429</span>,
+            detail={<span class="str">"error"</span>: <span class="str">"Rate limit exceeded"</span>, <span class="str">"retry_after"</span>: <span class="kw">await</span> redis.ttl(key)}
+        )
+
+    <span class="cm"># Add rate limit headers</span>
+    request.state.rate_limit_remaining = limit - current
+    request.state.rate_limit_reset = <span class="kw">await</span> redis.ttl(key)
+
+<span class="cm"># ─── Idempotency ───</span>
+<span class="kw">async def</span> <span class="fn">check_idempotency</span>(
+    idempotency_key: Optional[<span class="fn">str</span>] = Header(<span class="kw">None</span>, alias=<span class="str">"Idempotency-Key"</span>)
+):
+    <span class="kw">if not</span> idempotency_key:
+        <span class="kw">return</span> <span class="kw">None</span>
+    cached = <span class="kw">await</span> redis.get(<span class="str">f"idempotency:{idempotency_key}"</span>)
+    <span class="kw">if</span> cached:
+        <span class="kw">return</span> json.loads(cached)
+    <span class="kw">return</span> <span class="kw">None</span>
+
+<span class="cm"># ─── Endpoints ───</span>
+<span class="kw">@app.get</span>(<span class="str">"/v1/forecast"</span>, response_model=ForecastResponse)
+<span class="kw">async def</span> <span class="fn">get_forecast</span>(
+    params: ForecastRequest = Depends(),
+    _: <span class="kw">None</span> = Depends(rate_limit),
+    cached: Optional[<span class="fn">dict</span>] = Depends(check_idempotency)
+):
+    <span class="kw">if</span> cached:
+        <span class="kw">return</span> cached
+
+    <span class="cm"># Fetch from weather service with circuit breaker</span>
+    forecast = <span class="kw">await</span> weather_service.get_forecast(params.lat, params.lon, params.days, params.units)
+
+    response = ForecastResponse(
+        location=forecast[<span class="str">"location"</span>],
+        forecast=forecast[<span class="str">"daily"</span>],
+        generated_at=datetime.utcnow().isoformat(),
+        request_id=<span class="fn">str</span>(uuid.uuid4())
+    )
+
+    <span class="cm"># Cache for 5 minutes</span>
+    <span class="kw">await</span> redis.setex(
+        <span class="str">f"forecast:{params.lat}:{params.lon}:{params.days}"</span>,
+        <span class="num">300</span>, response.json()
+    )
+    <span class="kw">return</span> response
+
+<span class="cm"># ─── Webhook Subscription + Delivery ───</span>
+<span class="kw">class</span> <span class="fn">WebhookSubscription</span>(BaseModel):
+    url: <span class="fn">str</span> = Field(..., regex=<span class="str">r"^https://"</span>)
+    events: List[<span class="fn">str</span>] = Field(..., min_items=<span class="num">1</span>)
+    secret: Optional[<span class="fn">str</span>] = <span class="kw">None</span>
+
+<span class="kw">@app.post</span>(<span class="str">"/v1/webhooks"</span>)
+<span class="kw">async def</span> <span class="fn">create_webhook</span>(sub: WebhookSubscription, _: <span class="kw">None</span> = Depends(rate_limit)):
+    webhook_id = secrets.token_urlsafe(<span class="num">16</span>)
+    secret = sub.secret <span class="kw">or</span> secrets.token_hex(<span class="num">32</span>)
+
+    <span class="kw">await</span> redis.hset(<span class="str">f"webhook:{webhook_id}"</span>, mapping={
+        <span class="str">"url"</span>: sub.url,
+        <span class="str">"events"</span>: json.dumps(sub.events),
+        <span class="str">"secret"</span>: secret,
+        <span class="str">"created_at"</span>: <span class="fn">str</span>(time.time()),
+        <span class="str">"active"</span>: <span class="str">"1"</span>
+    })
+    <span class="kw">return</span> {<span class="str">"webhook_id"</span>: webhook_id, <span class="str">"secret"</span>: secret}
+
+<span class="cm"># Webhook delivery with HMAC signature + retry</span>
+<span class="kw">async def</span> <span class="fn">deliver_webhook</span>(webhook_id: <span class="fn">str</span>, event: <span class="fn">str</span>, payload: <span class="fn">dict</span>):
+    wh = <span class="kw">await</span> redis.hgetall(<span class="str">f"webhook:{webhook_id}"</span>)
+    <span class="kw">if not</span> wh <span class="kw">or</span> wh.get(<span class="str">"active"</span>) != <span class="str">"1"</span>:
+        <span class="kw">return</span>
+
+    body = json.dumps(payload, separators=(<span class="str">","</span>, <span class="str">":"</span>))
+    timestamp = <span class="fn">str</span>(<span class="fn">int</span>(time.time()))
+    signature = hmac.new(
+        wh[<span class="str">"secret"</span>].encode(),
+        <span class="str">f"{timestamp}.{body}"</span>.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    headers = {
+        <span class="str">"Content-Type"</span>: <span class="str">"application/json"</span>,
+        <span class="str">"X-Webhook-ID"</span>: webhook_id,
+        <span class="str">"X-Event-Type"</span>: event,
+        <span class="str">"X-Signature"</span>: <span class="str">f"sha256={signature}"</span>,
+        <span class="str">"X-Timestamp"</span>: timestamp
+    }
+
+    <span class="kw">async with</span> aiohttp.ClientSession() <span class="kw">as</span> session:
+        <span class="kw">for</span> attempt <span class="kw">in</span> <span class="fn">range</span>(<span class="num">5</span>):
+            <span class="kw">try</span>:
+                <span class="kw">async with</span> session.post(wh[<span class="str">"url"</span>], headers=headers, data=body, timeout=<span class="num">10</span>) <span class="kw">as</span> resp:
+                    <span class="kw">if</span> resp.status < <span class="num">500</span>:
+                        <span class="kw">return</span>  <span class="cm"># Success or 4xx (client error, don't retry)</span>
+            <span class="kw">except</span> Exception:
+                <span class="kw">pass</span>
+            <span class="kw">await</span> asyncio.sleep(<span class="num">2</span> ** attempt)
+
+    <span class="cm"># All retries failed → DLQ</span>
+    <span class="kw">await</span> redis.lpush(<span class="str">"webhook:dlq"</span>, json.dumps({<span class="str">"webhook_id"</span>: webhook_id, <span class="str">"event"</span>: event, <span class="str">"payload"</span>: payload}))</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- CI/CD PATTERNS -->
+  <div class="card code-card" data-tags="cicd github-actions docker testing">
+    <h3>🚀 CI/CD — GitHub Actions + Docker + Testing</h3>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">GitHub Actions — Full Pipeline with Matrix + Security Scan</span></div>
+      <div class="code-body">
+<pre><span class="cm"># .github/workflows/deploy.yml</span>
+<span class="kw">name</span>: <span class="str">CI/CD Pipeline</span>
+
+<span class="kw">on</span>:
+  <span class="kw">push</span>:
+    <span class="kw">branches</span>: [<span class="str">main</span>]
+  <span class="kw">pull_request</span>:
+    <span class="kw">branches</span>: [<span class="str">main</span>]
+
+<span class="kw">env</span>:
+  <span class="kw">PYTHON_VERSION</span>: <span class="str">"3.11"</span>
+  <span class="kw">AWS_REGION</span>: <span class="str">"eu-central-1"</span>
+  <span class="kw">ECR_REGISTRY</span>: <span class="str">"${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com"</span>
+
+<span class="kw">jobs</span>:
+  <span class="kw">lint-and-typecheck</span>:
+    <span class="kw">runs-on</span>: <span class="str">ubuntu-latest</span>
+    <span class="kw">steps</span>:
+      - <span class="kw">uses</span>: <span class="str">actions/checkout@v4</span>
+      - <span class="kw">uses</span>: <span class="str">actions/setup-python@v5</span>
+        <span class="kw">with</span>: { <span class="kw">python-version</span>: <span class="str">"${{ env.PYTHON_VERSION }}"</span> }
+      - <span class="kw">uses</span>: <span class="str">actions/cache@v4</span>
+        <span class="kw">with</span>:
+          <span class="kw">path</span>: ~/.cache/pip
+          <span class="kw">key</span>: <span class="str">pip-${{ hashFiles('**/requirements*.txt') }}</span>
+      - <span class="kw">run</span>: <span class="str">pip install -r requirements-dev.txt</span>
+      - <span class="kw">run</span>: <span class="str">black --check --diff src/</span>
+      - <span class="kw">run</span>: <span class="str">isort --check-only src/</span>
+      - <span class="kw">run</span>: <span class="str">flake8 src/ --max-line-length=100</span>
+      - <span class="kw">run</span>: <span class="str">mypy src/ --strict</span>
+      - <span class="kw">run</span>: <span class="str">bandit -r src/ -f json -o bandit-report.json || true</span>
+      - <span class="kw">run</span>: <span class="str">safety check --json --output safety-report.json || true</span>
+
+  <span class="kw">unit-tests</span>:
+    <span class="kw">runs-on</span>: <span class="str">ubuntu-latest</span>
+    <span class="kw">strategy</span>:
+      <span class="kw">matrix</span>:
+        <span class="kw">python-version</span>: [<span class="str">"3.9"</span>, <span class="str">"3.10"</span>, <span class="str">"3.11"</span>]
+    <span class="kw">steps</span>:
+      - <span class="kw">uses</span>: <span class="str">actions/checkout@v4</span>
+      - <span class="kw">uses</span>: <span class="str">actions/setup-python@v5</span>
+        <span class="kw">with</span>: { <span class="kw">python-version</span>: <span class="str">"${{ matrix.python-version }}"</span> }
+      - <span class="kw">run</span>: <span class="str">pip install -r requirements.txt -r requirements-test.txt</span>
+      - <span class="kw">run</span>: <span class="str">pytest tests/unit --cov=src --cov-report=xml --cov-report=term -n auto</span>
+      - <span class="kw">uses</span>: <span class="str">codecov/codecov-action@v4</span>
+        <span class="kw">with</span>: { <span class="kw">files</span>: <span class="str">./coverage.xml</span> }
+
+  <span class="kw">integration-tests</span>:
+    <span class="kw">runs-on</span>: <span class="str">ubuntu-latest</span>
+    <span class="kw">services</span>:
+      <span class="kw">postgres</span>:
+        <span class="kw">image</span>: <span class="str">postgres:15-alpine</span>
+        <span class="kw">env</span>: { <span class="kw">POSTGRES_PASSWORD</span>: <span class="str">test</span>, <span class="kw">POSTGRES_DB</span>: <span class="str">weather_test</span> }
+        <span class="kw">options</span>: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      <span class="kw">redis</span>:
+        <span class="kw">image</span>: <span class="str">redis:7-alpine</span>
+        <span class="kw">options</span>: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    <span class="kw">steps</span>:
+      - <span class="kw">uses</span>: <span class="str">actions/checkout@v4</span>
+      - <span class="kw">run</span>: <span class="str">docker-compose -f tests/integration/docker-compose.yml up -d localstack</span>
+      - <span class="kw">run</span>: <span class="str">pytest tests/integration --tb=short -v</span>
+        <span class="kw">env</span>:
+          <span class="kw">DATABASE_URL</span>: <span class="str">postgresql://postgres:test@localhost:5432/weather_test</span>
+          <span class="kw">REDIS_URL</span>: <span class="str">redis://localhost:6379/0</span>
+
+  <span class="kw">security-scan</span>:
+    <span class="kw">runs-on</span>: <span class="str">ubuntu-latest</span>
+    <span class="kw">steps</span>:
+      - <span class="kw">uses</span>: <span class="str">actions/checkout@v4</span>
+      - <span class="kw">uses</span>: <span class="str">aquasecurity/trivy-action@master</span>
+        <span class="kw">with</span>: { <span class="kw">scan-type</span>: <span class="str">"fs"</span>, <span class="kw">severity</span>: <span class="str">"CRITICAL,HIGH"</span>, <span class="kw">exit-code</span>: <span class="str">"1"</span> }
+      - <span class="kw">uses</span>: <span class="str">bridgecrewio/checkov-action@master</span>
+        <span class="kw">with</span>: { <span class="kw">directory</span>: <span class="str">terraform/</span>, <span class="kw">framework</span>: <span class="str">terraform</span> }
+
+  <span class="kw">build-and-push</span>:
+    <span class="kw">needs</span>: [<span class="str">lint-and-typecheck</span>, <span class="str">unit-tests</span>, <span class="str">security-scan</span>]
+    <span class="kw">runs-on</span>: <span class="str">ubuntu-latest</span>
+    <span class="kw">steps</span>:
+      - <span class="kw">uses</span>: <span class="str">actions/checkout@v4</span>
+      - <span class="kw">uses</span>: <span class="str">aws-actions/configure-aws-credentials@v4</span>
+        <span class="kw">with</span>: { <span class="kw">role-to-assume</span>: <span class="str">"${{ secrets.ECR_PUSH_ROLE }}"</span>, <span class="kw">aws-region</span>: <span class="str">"${{ env.AWS_REGION }}"</span> }
+      - <span class="kw">uses</span>: <span class="str">aws-actions/amazon-ecr-login@v2</span>
+      - <span class="kw">uses</span>: <span class="str">docker/build-push-action@v5</span>
+        <span class="kw">with</span>:
+          <span class="kw">context</span>: <span class="str">.</span>
+          <span class="kw">push</span>: <span class="kw">true</span>
+          <span class="kw">tags</span>: <span class="str">"${{ env.ECR_REGISTRY }}/weather-api:${{ github.sha }}"</span>
+          <span class="kw">cache-from</span>: <span class="str">type=gha</span>
+          <span class="kw">cache-to</span>: <span class="str">type=gha,mode=max</span>
+          <span class="kw">build-args</span>: |
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+
+  <span class="kw">deploy-staging</span>:
+    <span class="kw">needs</span>: <span class="str">build-and-push</span>
+    <span class="kw">runs-on</span>: <span class="str">ubuntu-latest</span>
+    <span class="kw">environment</span>: <span class="str">staging</span>
+    <span class="kw">steps</span>:
+      - <span class="kw">uses</span>: <span class="str">actions/checkout@v4</span>
+      - <span class="kw">uses</span>: <span class="str">hashicorp/setup-terraform@v3</span>
+      - <span class="kw">run</span>: <span class="str">terraform init -backend-config=environments/staging/backend.tfvars</span>
+      - <span class="kw">run</span>: <span class="str">terraform plan -var="image_tag=${{ github.sha }}" -out=tfplan</span>
+      - <span class="kw">run</span>: <span class="str">terraform apply -auto-approve tfplan</span>
+      - <span class="kw">run</span>: <span class="str">pytest tests/smoke --base-url=https://staging-api.wetter.com</span>
+
+  <span class="kw">deploy-production</span>:
+    <span class="kw">needs</span>: <span class="str">deploy-staging</span>
+    <span class="kw">runs-on</span>: <span class="str">ubuntu-latest</span>
+    <span class="kw">environment</span>: <span class="str">production</span>
+    <span class="kw">steps</span>:
+      - <span class="kw">uses</span>: <span class="str">actions/checkout@v4</span>
+      - <span class="kw">uses</span>: <span class="str">hashicorp/setup-terraform@v3</span>
+      - <span class="kw">run</span>: <span class="str">terraform init -backend-config=environments/prod/backend.tfvars</span>
+      - <span class="kw">run</span>: <span class="str">terraform plan -var="image_tag=${{ github.sha }}" -out=tfplan</span>
+      - <span class="kw">uses</span>: <span class="str">trstringer/manual-approval@v1</span>
+        <span class="kw">with</span>: { <span class="kw">secret</span>: <span class="str">"${{ github.TOKEN }}"</span>, <span class="kw">approvers</span>: <span class="str">"team-backend"</span> }
+      - <span class="kw">run</span>: <span class="str">terraform apply -auto-approve tfplan</span>
+      - <span class="kw">run</span>: <span class="str">pytest tests/smoke --base-url=https://api.wetter.com</span>
+      - <span class="kw">uses</span>: <span class="str">8398a7/action-slack@v3</span>
+        <span class="kw">with</span>: { <span class="kw">status</span>: <span class="str">"${{ job.status }}"</span>, <span class="kw">channel</span>: <span class="str">"#deployments"</span> }</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI/LLM PATTERNS -->
+  <div class="card code-card" data-tags="ai llm langchain openai rag vector-db">
+    <h3>🤖 AI/LLM — Production LLM Integration</h3>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">RAG Pipeline with LangChain + Pinecone + Streaming</span></div>
+      <div class="code-body">
+<pre><span class="cm"># llm/rag_pipeline.py — Production RAG with guardrails</span>
+<span class="kw">from</span> langchain <span class="kw">import</span> OpenAI, VectorDBQA, LLMChain, PromptTemplate
+<span class="kw">from</span> langchain.embeddings <span class="kw">import</span> OpenAIEmbeddings
+<span class="kw">from</span> langchain.vectorstores <span class="kw">import</span> Pinecone
+<span class="kw">from</span> langchain.text_splitter <span class="kw">import</span> RecursiveCharacterTextSplitter
+<span class="kw">from</span> langchain.callbacks <span class="kw">import</span> StreamingStdOutCallbackHandler
+<span class="kw">from</span> langchain.schema <span class="kw">import</span> Document
+<span class="kw">from</span> pinecone <span class="kw">import</span> Pinecone as PineconeClient
+<span class="kw">import</span> openai, json, re
+<span class="kw">from</span> typing <span class="kw">import</span> List, AsyncGenerator
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="fn">RAGResponse</span>:
+    answer: <span class="fn">str</span>
+    sources: List[<span class="fn">dict</span>]
+    confidence: <span class="fn">float</span>
+    tokens_used: <span class="fn">int</span>
+    latency_ms: <span class="fn">float</span>
+
+<span class="kw">class</span> <span class="fn">WeatherRAG</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, openai_key: <span class="fn">str</span>, pinecone_key: <span class="fn">str</span>):
+        <span class="kw">self</span>.embeddings = OpenAIEmbeddings(
+            openai_api_key=openai_key,
+            model=<span class="str">"text-embedding-3-small"</span>
+        )
+        pc = PineconeClient(api_key=pinecone_key)
+        index = pc.Index(<span class="str">"weather-docs"</span>)
+        <span class="kw">self</span>.vectorstore = Pinecone(index, <span class="kw">self</span>.embeddings, <span class="str">"text"</span>)
+
+        <span class="cm"># Few-shot prompt with explicit constraints</span>
+        <span class="kw">self</span>.prompt = PromptTemplate(
+            input_variables=[<span class="str">"context"</span>, <span class="str">"question"</span>],
+            template=<span class="str">"""You are a weather data assistant. Use ONLY the provided context to answer.
+If the context doesn't contain the answer, say "I don't have enough information about that."
+Never make up weather forecasts or data.
+
+Context:
+{context}
+
+Question: {question}
+
+Answer concisely in 2-3 sentences:"""</span>
+        )
+        <span class="kw">self</span>.llm = OpenAI(
+            openai_api_key=openai_key,
+            model_name=<span class="str">"gpt-4-turbo-preview"</span>,
+            temperature=<span class="num">0.1</span>,  <span class="cm"># Low creativity for factual tasks</span>
+            max_tokens=<span class="num">500</span>,
+            streaming=<span class="kw">True</span>
+        )
+        <span class="kw">self</span>.qa_chain = LLMChain(llm=<span class="kw">self</span>.llm, prompt=<span class="kw">self</span>.prompt)
+
+    <span class="kw">async def</span> <span class="fn">answer</span>(<span class="kw">self</span>, question: <span class="fn">str</span>) -> RAGResponse:
+        <span class="kw">import</span> time
+        start = time.time()
+
+        <span class="cm"># 1. Retrieve relevant documents (top-5)</span>
+        docs = <span class="kw">self</span>.vectorstore.similarity_search(question, k=<span class="num">5</span>, filter={<span class="str">"category"</span>: <span class="str">"faq"</span>})
+        context = <span class="str">"
+
+"</span>.join([d.page_content <span class="kw">for</span> d <span class="kw">in</span> docs])
+
+        <span class="cm"># 2. Generate answer</span>
+        result = <span class="kw">await</span> <span class="kw">self</span>.qa_chain.ainvoke({<span class="str">"context"</span>: context, <span class="str">"question"</span>: question})
+        answer = result[<span class="str">"text"</span>].strip()
+
+        <span class="cm"># 3. Validation layer</span>
+        <span class="kw">if</span> <span class="kw">self</span>._contains_hallucination(answer, docs):
+            answer = <span class="str">"I don't have enough verified information to answer that accurately."</span>
+            confidence = <span class="num">0.0</span>
+        <span class="kw">else</span>:
+            confidence = <span class="kw">self</span>._calculate_confidence(answer, docs)
+
+        <span class="cm"># 4. Cost tracking</span>
+        tokens = <span class="kw">self</span>.llm.get_num_tokens(context + question + answer)
+
+        <span class="kw">return</span> RAGResponse(
+            answer=answer,
+            sources=[{<span class="str">"text"</span>: d.page_content[:<span class="num">200</span>], <span class="str">"source"</span>: d.metadata.get(<span class="str">"source"</span>)} <span class="kw">for</span> d <span class="kw">in</span> docs],
+            confidence=confidence,
+            tokens_used=tokens,
+            latency_ms=(time.time() - start) * <span class="num">1000</span>
+        )
+
+    <span class="kw">def</span> <span class="fn">_contains_hallucination</span>(<span class="kw">self</span>, answer: <span class="fn">str</span>, docs: List[Document]) -> <span class="fn">bool</span>:
+        <span class="cm"># Check if answer contains claims not supported by retrieved docs</span>
+        doc_text = <span class="str">" "</span>.join([d.page_content.lower() <span class="kw">for</span> d <span class="kw">in</span> docs])
+        <span class="cm"># Extract named entities/numbers from answer and verify against docs</span>
+        numbers = re.findall(<span class="str">r'\d+(?:\.\d+)?'</span>, answer)
+        <span class="kw">for</span> num <span class="kw">in</span> numbers:
+            <span class="kw">if</span> num <span class="kw">not in</span> doc_text:
+                <span class="kw">return</span> <span class="kw">True</span>
+        <span class="kw">return</span> <span class="kw">False</span>
+
+    <span class="kw">def</span> <span class="fn">_calculate_confidence</span>(<span class="kw">self</span>, answer: <span class="fn">str</span>, docs: List[Document]) -> <span class="fn">float</span>:
+        <span class="cm"># Simple heuristic: overlap between answer words and doc words</span>
+        answer_words = <span class="fn">set</span>(answer.lower().split())
+        doc_words = <span class="fn">set</span>(<span class="str">" "</span>.join([d.page_content <span class="kw">for</span> d <span class="kw">in</span> docs]).lower().split())
+        overlap = <span class="fn">len</span>(answer_words & doc_words) / <span class="fn">len</span>(answer_words)
+        <span class="kw">return</span> <span class="fn">round</span>(overlap, <span class="num">2</span>)
+
+    <span class="kw">async def</span> <span class="fn">stream_answer</span>(<span class="kw">self</span>, question: <span class="fn">str</span>) -> AsyncGenerator[<span class="fn">str</span>, <span class="kw">None</span>]:
+        <span class="cm"># Streaming for better perceived latency</span>
+        docs = <span class="kw">self</span>.vectorstore.similarity_search(question, k=<span class="num">3</span>)
+        context = <span class="str">"
+
+"</span>.join([d.page_content <span class="kw">for</span> d <span class="kw">in</span> docs])
+
+        <span class="kw">async for</span> chunk <span class="kw">in</span> <span class="kw">self</span>.qa_chain.llm.astream({<span class="str">"context"</span>: context, <span class="str">"question"</span>: question}):
+            <span class="kw">yield</span> chunk.content
+
+<span class="cm"># FastAPI endpoint with streaming</span>
+<span class="kw">@app.post</span>(<span class="str">"/v1/ai/ask"</span>)
+<span class="kw">async def</span> <span class="fn">ask_weather_ai</span>(
+    request: <span class="fn">WeatherQuestion</span>,
+    rag: WeatherRAG = Depends(get_rag),
+    _: <span class="kw">None</span> = Depends(rate_limit)
+):
+    <span class="kw">if</span> request.stream:
+        <span class="kw">return</span> StreamingResponse(
+            rag.stream_answer(request.question),
+            media_type=<span class="str">"text/event-stream"</span>
+        )
+    response = <span class="kw">await</span> rag.answer(request.question)
+    <span class="kw">return</span> response</pre>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Function Calling — LLM Decides Which API to Call</span></div>
+      <div class="code-body">
+<pre><span class="cm"># llm/function_calling.py — LLM as router</span>
+<span class="kw">import</span> openai
+<span class="kw">from</span> typing <span class="kw">import</span> Callable, Dict
+<span class="kw">import</span> json
+
+<span class="cm"># Define available tools</span>
+TOOLS = [
+    {
+        <span class="str">"type"</span>: <span class="str">"function"</span>,
+        <span class="str">"function"</span>: {
+            <span class="str">"name"</span>: <span class="str">"get_current_weather"</span>,
+            <span class="str">"description"</span>: <span class="str">"Get current weather for a location"</span>,
+            <span class="str">"parameters"</span>: {
+                <span class="str">"type"</span>: <span class="str">"object"</span>,
+                <span class="str">"properties"</span>: {
+                    <span class="str">"location"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>, <span class="str">"description"</span>: <span class="str">"City name or coordinates"</span>},
+                    <span class="str">"units"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>, <span class="str">"enum"</span>: [<span class="str">"metric"</span>, <span class="str">"imperial"</span>]}
+                },
+                <span class="str">"required"</span>: [<span class="str">"location"</span>]
+            }
+        }
+    },
+    {
+        <span class="str">"type"</span>: <span class="str">"function"</span>,
+        <span class="str">"function"</span>: {
+            <span class="str">"name"</span>: <span class="str">"get_forecast"</span>,
+            <span class="str">"description"</span>: <span class="str">"Get weather forecast for upcoming days"</span>,
+            <span class="str">"parameters"</span>: {
+                <span class="str">"type"</span>: <span class="str">"object"</span>,
+                <span class="str">"properties"</span>: {
+                    <span class="str">"location"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>},
+                    <span class="str">"days"</span>: {<span class="str">"type"</span>: <span class="str">"integer"</span>, <span class="str">"minimum"</span>: <span class="num">1</span>, <span class="str">"maximum"</span>: <span class="num">14</span>}
+                },
+                <span class="str">"required"</span>: [<span class="str">"location"</span>, <span class="str">"days"</span>]
+            }
+        }
+    },
+    {
+        <span class="str">"type"</span>: <span class="str">"function"</span>,
+        <span class="str">"function"</span>: {
+            <span class="str">"name"</span>: <span class="str">"search_weather_docs"</span>,
+            <span class="str">"description"</span>: <span class="str">"Search weather documentation for general questions"</span>,
+            <span class="str">"parameters"</span>: {
+                <span class="str">"type"</span>: <span class="str">"object"</span>,
+                <span class="str">"properties"</span>: {
+                    <span class="str">"query"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>, <span class="str">"description"</span>: <span class="str">"Search query"</span>}
+                },
+                <span class="str">"required"</span>: [<span class="str">"query"</span>]
+            }
+        }
+    }
+]
+
+<span class="cm"># Tool implementations</span>
+<span class="kw">def</span> <span class="fn">get_current_weather</span>(location: <span class="fn">str</span>, units: <span class="fn">str</span> = <span class="str">"metric"</span>) -> <span class="fn">dict</span>:
+    <span class="kw">return</span> weather_api.current(location, units)
+
+<span class="kw">def</span> <span class="fn">get_forecast</span>(location: <span class="fn">str</span>, days: <span class="fn">int</span>) -> <span class="fn">dict</span>:
+    <span class="kw">return</span> weather_api.forecast(location, days)
+
+<span class="kw">def</span> <span class="fn">search_weather_docs</span>(query: <span class="fn">str</span>) -> <span class="fn">dict</span>:
+    <span class="kw">return</span> rag.search(query)
+
+TOOL_MAP: Dict[<span class="fn">str</span>, Callable] = {
+    <span class="str">"get_current_weather"</span>: get_current_weather,
+    <span class="str">"get_forecast"</span>: get_forecast,
+    <span class="str">"search_weather_docs"</span>: search_weather_docs
+}
+
+<span class="kw">async def</span> <span class="fn">process_weather_query</span>(user_query: <span class="fn">str</span>) -> <span class="fn">str</span>:
+    <span class="cm"># Step 1: LLM decides which tool(s) to call</span>
+    response = <span class="kw">await</span> openai.chat.completions.create(
+        model=<span class="str">"gpt-4-turbo-preview"</span>,
+        messages=[
+            {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: <span class="str">"You are a weather assistant. Use the available tools to help users."</span>},
+            {<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: user_query}
+        ],
+        tools=TOOLS,
+        tool_choice=<span class="str">"auto"</span>
+    )
+
+    message = response.choices[<span class="num">0</span>].message
+
+    <span class="cm"># Step 2: Execute tool calls</span>
+    <span class="kw">if</span> message.tool_calls:
+        tool_results = []
+        <span class="kw">for</span> tool_call <span class="kw">in</span> message.tool_calls:
+            fn_name = tool_call.function.name
+            fn_args = json.loads(tool_call.function.arguments)
+
+            <span class="kw">if</span> fn_name <span class="kw">in</span> TOOL_MAP:
+                result = TOOL_MAP[fn_name](**fn_args)
+                tool_results.append({
+                    <span class="str">"tool_call_id"</span>: tool_call.id,
+                    <span class="str">"role"</span>: <span class="str">"tool"</span>,
+                    <span class="str">"name"</span>: fn_name,
+                    <span class="str">"content"</span>: json.dumps(result)
+                })
+
+        <span class="cm"># Step 3: LLM synthesizes final answer from tool results</span>
+        final_response = <span class="kw">await</span> openai.chat.completions.create(
+            model=<span class="str">"gpt-4-turbo-preview"</span>,
+            messages=[
+                {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: <span class="str">"Answer based on the tool results. Be concise."</span>},
+                {<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: user_query},
+                message,  <span class="cm"># assistant's tool call request</span>
+                *tool_results
+            ]
+        )
+        <span class="kw">return</span> final_response.choices[<span class="num">0</span>].message.content
+
+    <span class="cm"># No tool needed — direct answer</span>
+    <span class="kw">return</span> message.content</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- NODE.JS / TYPESCRIPT -->
+  <div class="card code-card" data-tags="nodejs typescript express api">
+    <h3>📘 Node.js / TypeScript — Working Knowledge</h3>
+
+    <div class="code-block">
+      <div class="code-header"><span class="lang">TypeScript Express API with Zod Validation</span></div>
+      <div class="code-body">
+<pre><span class="cm">// src/server.ts — TypeScript API with type safety</span>
+<span class="kw">import</span> express, { Request, Response, NextFunction } <span class="kw">from</span> <span class="str">'express'</span>;
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">'zod'</span>;
+<span class="kw">import</span> rateLimit <span class="kw">from</span> <span class="str">'express-rate-limit'</span>;
+<span class="kw">import</span> helmet <span class="kw">from</span> <span class="str">'helmet'</span>;
+
+<span class="cm">// Zod schemas for runtime validation</span>
+<span class="kw">const</span> ForecastRequestSchema = z.object({
+  lat: z.number().min(-<span class="num">90</span>).max(<span class="num">90</span>),
+  lon: z.number().min(-<span class="num">180</span>).max(<span class="num">180</span>),
+  days: z.number().int().min(<span class="num">1</span>).max(<span class="num">14</span>).default(<span class="num">7</span>),
+  units: z.enum([<span class="str">'metric'</span>, <span class="str">'imperial'</span>]).default(<span class="str">'metric'</span>)
+});
+
+type ForecastRequest = z.infer&lt;<span class="kw">typeof</span> ForecastRequestSchema&gt;;
+
+<span class="cm">// Rate limiting middleware</span>
+<span class="kw">const</span> limiter = rateLimit({
+  windowMs: <span class="num">60</span> * <span class="num">60</span> * <span class="num">1000</span>, <span class="cm">// 1 hour</span>
+  max: <span class="num">1000</span>,
+  keyGenerator: (req: Request) => req.headers[<span class="str">'x-api-key'</span>] <span class="kw">as</span> <span class="fn">string</span> || req.ip || <span class="str">'unknown'</span>,
+  handler: (req, res) => {
+    res.status(<span class="num">429</span>).json({
+      error: <span class="str">'Rate limit exceeded'</span>,
+      retryAfter: Math.ceil(req.rateLimit.resetTime.getTime() / <span class="num">1000</span>)
+    });
+  }
+});
+
+<span class="kw">const</span> app = express();
+app.use(helmet());
+app.use(express.json({ limit: <span class="str">'10kb'</span> }));
+app.use(limiter);
+
+<span class="cm">// Validation middleware factory</span>
+<span class="kw">function</span> <span class="fn">validateBody</span>&lt;T <span class="kw">extends</span> z.ZodTypeAny&gt;(schema: T) {
+  <span class="kw">return</span> (req: Request, res: Response, next: NextFunction) => {
+    <span class="kw">const</span> result = schema.safeParse(req.body);
+    <span class="kw">if</span> (!result.success) {
+      <span class="kw">return</span> res.status(<span class="num">400</span>).json({
+        error: <span class="str">'Validation failed'</span>,
+        details: result.error.flatten().fieldErrors
+      });
+    }
+    req.body = result.data;
+    next();
+  };
+}
+
+<span class="cm">// Async handler wrapper for clean error handling</span>
+<span class="kw">function</span> <span class="fn">asyncHandler</span>(fn: (req: Request, res: Response, next: NextFunction) => Promise&lt;<span class="kw">void</span>&gt;) {
+  <span class="kw">return</span> (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
+app.post(<span class="str">'/v1/forecast'</span>,
+  validateBody(ForecastRequestSchema),
+  asyncHandler(<span class="kw">async</span> (req: Request, res: Response) => {
+    <span class="kw">const</span> { lat, lon, days, units } = req.body <span class="kw">as</span> ForecastRequest;
+
+    <span class="kw">const</span> forecast = <span class="kw">await</span> weatherService.getForecast(lat, lon, days, units);
+
+    res.json({
+      location: forecast.location,
+      forecast: forecast.daily,
+      generatedAt: <span class="kw">new</span> Date().toISOString(),
+      requestId: crypto.randomUUID()
+    });
+  })
+);
+
+<span class="cm">// Global error handler</span>
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  console.error(<span class="str">'Unhandled error:'</span>, err);
+  res.status(<span class="num">500</span>).json({
+    error: <span class="str">'Internal server error'</span>,
+    requestId: req.headers[<span class="str">'x-request-id'</span>] || <span class="str">'unknown'</span>
+  });
+});
+
+app.listen(<span class="num">3000</span>, () => console.log(<span class="str">'Server running on port 3000'</span>));</pre>
+      </div>
+    </div>
+  </div>
+</div> <!-- end code panel -->
+
+<!-- ==================== Q&A ==================== -->
+<div id="qa" class="panel">
+  <input type="text" class="search-box" id="qaSearch" placeholder="🔍 Search questions..." onkeyup="filterQA()">
+
+  <div class="card">
+    <h3>🎯 Behavioral & Leadership Questions</h3>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>Tell me about a time you had to make a difficult technical decision with incomplete information.</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <p><strong>Story:</strong> We needed to choose between Kafka and Kinesis for our event streaming platform. Both had pros/cons, but we had no production experience with either and a 2-week deadline.</p>
+        <ul>
+          <li><strong>Decision framework:</strong> Created a weighted scorecard (throughput, cost, ops overhead, team expertise, managed vs. self-hosted)</li>
+          <li><strong>Spike:</strong> Built proof-of-concepts for both in 3 days; ran load tests with realistic weather data volumes</li>
+          <li><strong>Risk mitigation:</strong> Chose Kinesis (managed, less ops) but designed abstraction layer so we could swap to Kafka later</li>
+          <li><strong>Outcome:</strong> Deployed in 10 days; later migrated to Kafka when team grew — abstraction layer made migration 2 days instead of 2 months</li>
+        </ul>
+        <p><strong>Key lesson:</strong> Optimize for reversibility. Make decisions that are easy to undo.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>How do you handle disagreements with team members about technical approaches?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <ul>
+          <li><strong>Assume positive intent:</strong> Everyone wants the best outcome for the team</li>
+          <li><strong>Define the decision criteria first:</strong> "Let's agree on what we're optimizing for — speed, reliability, or maintainability?"</li>
+          <li><strong>Data over opinions:</strong> Prototype both approaches; measure; let numbers decide</li>
+          <li><strong>Disagree and commit:</strong> If we can't reach consensus, the decision owner decides; everyone commits to making it work</li>
+          <li><strong>Retrospective:</strong> Revisit the decision in 1 month — did we make the right call? Learn for next time</li>
+        </ul>
+        <p><strong>Example:</strong> A teammate wanted to use MongoDB for time-series data. I advocated for TimescaleDB. We prototyped both; TimescaleDB won on query performance. Teammate was happy because the data proved it.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>Describe a project where you had to learn a new technology quickly.</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <p><strong>Context:</strong> Needed to integrate LLMs into our weather assistant. No prior production LLM experience.</p>
+        <ul>
+          <li><strong>Learning approach:</strong> 2-day intensive — docs, tutorials, built a toy RAG app</li>
+          <li><strong>Community:</strong> Joined LangChain Discord; asked targeted questions</li>
+          <li><strong>Experimentation:</strong> Built 3 prototypes with different approaches (direct API, LangChain, fine-tuning)</li>
+          <li><strong>Documentation:</strong> Wrote internal guide as I learned; became team reference</li>
+          <li><strong>Outcome:</strong> Production RAG pipeline in 3 weeks; 78% resolution rate</li>
+        </ul>
+        <p><strong>My learning philosophy:</strong> Build something real within 48 hours. Theory follows practice.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>How do you prioritize work when everything is urgent?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <ul>
+          <li><strong>Eisenhower Matrix:</strong> Urgent+Important first, Important+Not Urgent second, delegate/defer the rest</li>
+          <li><strong>Impact vs. Effort:</strong> Quick wins (high impact, low effort) first to build momentum</li>
+          <li><strong>Communicate:</strong> "I can do A and B today, or A, C, and D. Which matters more?"</li>
+          <li><strong>Block time:</strong> Deep work blocks for complex tasks; async for shallow work</li>
+          <li><strong>Say no:</strong> Protect the team's capacity; push back on unrealistic deadlines with data</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>⚙️ Technical Deep-Dive Questions</h3>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>How would you design a system to handle 1 million weather data points per minute?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <p><strong>Ingestion Layer:</strong></p>
+        <ul>
+          <li>IoT devices / weather stations → <strong>MQTT broker (AWS IoT Core)</strong> or <strong>Kafka</strong> for durability</li>
+          <li><strong>Kinesis Data Streams</strong> for real-time ingestion with auto-scaling shards</li>
+          <li>Buffer with <strong>SQS</strong> for burst absorption</li>
+        </ul>
+        <p><strong>Processing Layer:</strong></p>
+        <ul>
+          <li><strong>Kinesis Data Analytics (Flink)</strong> or <strong>Spark Structured Streaming</strong> for real-time aggregation</li>
+          <li><strong>Lambda</strong> for lightweight per-record transforms</li>
+          <li><strong>Step Functions</strong> for complex multi-stage processing</li>
+        </ul>
+        <p><strong>Storage Layer:</strong></p>
+        <ul>
+          <li><strong>Hot:</strong> DynamoDB / Redis for real-time queries (last hour)</li>
+          <li><strong>Warm:</strong> S3 + Athena / Delta Lake for analytics (last 30 days)</li>
+          <li><strong>Cold:</strong> S3 Glacier for archival (historical data)</li>
+        </ul>
+        <p><strong>Key Decisions:</strong></p>
+        <ul>
+          <li>Partition by station_id + date for efficient queries</li>
+          <li>Pre-aggregate daily/weekly summaries to reduce query load</li>
+          <li>Use TTL in DynamoDB for automatic hot→warm transition</li>
+          <li>Idempotent writes with content-hash deduplication</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>Explain how you would ensure zero-downtime deployments for a critical API.</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <ul>
+          <li><strong>Blue-Green Deployment:</strong> Deploy new version to "green" environment; run health checks; switch traffic via ALB/Route53; keep blue running for instant rollback</li>
+          <li><strong>Canary Releases:</strong> Route 5% traffic to new version; monitor error rate/latency; gradually increase to 100%</li>
+          <li><strong>Database Migrations:</strong> Backward-compatible changes only — add column (deploy) → backfill (deploy) → remove old column (deploy)</li>
+          <li><strong>Feature Flags:</strong> Deploy code dark; enable via config toggle; instant rollback by disabling flag</li>
+          <li><strong>Health Checks:</strong> Deep health checks (DB, cache, downstream APIs) before marking instance healthy</li>
+          <li><strong>Graceful Shutdown:</strong> SIGTERM → stop accepting new requests → finish in-flight requests (30s timeout) → SIGKILL</li>
+          <li><strong>Database Connection Pooling:</strong> Warm up connections before accepting traffic; drain on shutdown</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>How do you handle data consistency across distributed systems?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <ul>
+          <li><strong>Event Sourcing + CQRS:</strong> Single source of truth in event log; read models eventually consistent</li>
+          <li><strong>Saga Pattern:</strong> For multi-service transactions — orchestrate compensating actions on failure</li>
+          <li><strong>Outbox Pattern:</strong> Write to DB + outbox table in same transaction; separate process publishes events</li>
+          <li><strong>Idempotency Keys:</strong> Every write operation is idempotent; safe to retry</li>
+          <li><strong>Conflict Resolution:</strong> Last-Write-Wins (LWW) with vector clocks for concurrent edits; or application-level merge</li>
+          <li><strong>CDC (Change Data Capture):</strong> Debezium captures DB changes → Kafka → downstream sync</li>
+        </ul>
+        <p><strong>CAP Theorem awareness:</strong> Weather data is eventually consistent by nature (measurements have latency). We optimize for Availability + Partition Tolerance, with bounded staleness (&lt;5 min).</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>What monitoring and alerting strategy would you implement for a serverless architecture?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <ul>
+          <li><strong>Metrics:</strong> CloudWatch + custom metrics via Lambda Powertools (cold starts, memory usage, duration percentiles)</li>
+          <li><strong>Structured Logging:</strong> JSON logs with correlation_id, request_id, function_name, cold_start flag</li>
+          <li><strong>Distributed Tracing:</strong> X-Ray / OpenTelemetry across Lambda, Step Functions, API Gateway, DynamoDB</li>
+          <li><strong>Alarms:</strong>
+            <ul>
+              <li>Error rate &gt; 1% for 5 minutes → PagerDuty (P1)</li>
+              <li>Latency p99 &gt; 2s → Slack warning</li>
+              <li>DLQ depth &gt; 10 → PagerDuty</li>
+              <li>Throttling &gt; 0 → Auto-scale alert</li>
+            </ul>
+          </li>
+          <li><strong>Dashboards:</strong> Service-level (per-function) + System-level (end-to-end pipeline) + Business-level (data freshness, processing lag)</li>
+          <li><strong>SLOs:</strong> 99.9% availability, p99 latency &lt; 500ms, error rate &lt; 0.1%</li>
+          <li><strong>Cost Monitoring:</strong> Daily Lambda cost per function; alert if &gt;20% above baseline</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>How would you optimize a Spark job that's running out of memory?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <ul>
+          <li><strong>Diagnose first:</strong> Check Spark UI — is it driver OOM or executor OOM? Shuffle spill? GC pressure?</li>
+          <li><strong>Driver OOM:</strong> Avoid collect(), toPandas(), large broadcast joins. Use toLocalIterator() or write to file</li>
+          <li><strong>Executor OOM:</strong> Increase executor memory, reduce partition size, or repartition before wide operations</li>
+          <li><strong>Shuffle optimization:</strong> Enable AQE, tune spark.sql.shuffle.partitions, use salting for skewed keys</li>
+          <li><strong>Broadcast joins:</strong> For small tables (&lt; 10MB), use broadcast hint to avoid shuffle</li>
+          <li><strong>Memory tuning:</strong> Increase spark.memory.fraction, tune spark.executor.memoryOverhead for off-heap (Python UDFs)</li>
+          <li><strong>Code changes:</strong> Use mapPartitions instead of map for batch operations; avoid UDFs when built-in functions exist</li>
+          <li><strong>Storage:</strong> Persist intermediate DataFrames that are reused; unpersist when done</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>How do you prevent and handle security vulnerabilities in your infrastructure?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <ul>
+          <li><strong>Prevention:</strong>
+            <ul>
+              <li>tfsec/checkov in CI for Terraform</li>
+              <li>Dependabot + Snyk for dependency scanning</li>
+              <li>Least-privilege IAM policies; regular access reviews</li>
+              <li>Secrets in AWS Secrets Manager / Parameter Store; never in code</li>
+              <li>Network segmentation — VPC, security groups, private subnets for DBs</li>
+            </ul>
+          </li>
+          <li><strong>Detection:</strong>
+            <ul>
+              <li>GuardDuty for threat detection</li>
+              <li>CloudTrail for API audit logging</li>
+              <li>WAF + Shield for DDoS protection</li>
+            </ul>
+          </li>
+          <li><strong>Response:</strong>
+            <ul>
+              <li>Incident response runbook with escalation paths</li>
+              <li>Automated isolation — Lambda function to revoke IAM keys, block IPs</li>
+              <li>Post-incident review within 24h; action items tracked</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🏢 Company & Role Fit Questions</h3>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>Why do you want to work at wetter.com specifically?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <ul>
+          <li><strong>Domain:</strong> Weather data is fascinating — high volume, time-series, real-time, directly impacts people's lives</li>
+          <li><strong>Tech stack alignment:</strong> AWS Serverless, Python, Spark, Terraform — exactly what I've been working with and want to deepen</li>
+          <li><strong>Scale challenge:</strong> Millions of users, global data — the kind of scale problems I thrive on</li>
+          <li><strong>Team culture:</strong> From what I've learned, wetter.com values ownership, data-driven decisions, and engineering excellence</li>
+          <li><strong>Growth:</strong> Opportunity to work with cutting-edge data infrastructure and potentially ML/AI for weather prediction</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>Where do you see yourself in 3 years?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <ul>
+          <li><strong>Short-term (1 year):</strong> Deep domain expertise in weather data systems; become the go-to person for data pipeline architecture</li>
+          <li><strong>Medium-term (2 years):</strong> Lead a small team or major initiative; mentor junior engineers; drive technical decisions</li>
+          <li><strong>Long-term (3 years):</strong> Staff/Principal engineer track — influence architecture across teams; contribute to open source; speak at conferences</li>
+          <li><strong>Consistent:</strong> Always building, always learning, always shipping value to users</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q" onclick="toggleQA(this)">
+        <span>What questions do you have for us?</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="qa-a">
+        <p><strong>For Tim (Teamlead):</strong></p>
+        <ul>
+          <li>"What's the biggest technical challenge the team is facing right now?"</li>
+          <li>"How do you balance feature delivery with technical debt?"</li>
+          <li>"What does success look like for this role in the first 6 months?"</li>
+        </ul>
+        <p><strong>For Roland (Expert):</strong></p>
+        <ul>
+          <li>"What's the most interesting architecture decision you've made recently?"</li>
+          <li>"How do you approach performance optimization at your scale?"</li>
+          <li>"What's your take on serverless vs. containers for long-running data jobs?"</li>
+        </ul>
+        <p><strong>For Qarib (Senior):</strong></p>
+        <ul>
+          <li>"What's the day-to-day workflow like? Pair programming? Async reviews?"</li>
+          <li>"How does the team handle on-call? What's the rotation like?"</li>
+          <li>"What tools or practices have made the biggest difference in your productivity?"</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div> <!-- end qa panel -->
+
+<!-- ==================== QUICK REFERENCE ==================== -->
+<div id="ref" class="panel">
+  <div class="ref-grid">
+
+    <div class="ref-card">
+      <h4>🔧 AWS Serverless Quick Ref</h4>
+      <ul>
+        <li><strong>Lambda limits:</strong> 15 min timeout, 10 GB memory, 6 MB sync payload, 256 KB async</li>
+        <li><strong>Step Functions:</strong> 25K history events max → use nested workflows for long runs</li>
+        <li><strong>EventBridge:</strong> 500 events/sec default, 5 targets per rule, 100 rules per bus</li>
+        <li><strong>Lambda@Edge:</strong> 30 sec timeout, 1 MB request/response, Node.js or Python</li>
+        <li><strong>Cold start:</strong> Provisioned concurrency, SnapStart (Java), or keep-alive ping</li>
+        <li><strong>DLQ:</strong> SQS for async, SNS for sync; always enable for production</li>
+        <li><strong>IAM:</strong> Least privilege; use IAM Policy Simulator; avoid * in resources</li>
+      </ul>
+    </div>
+
+    <div class="ref-card">
+      <h4>⚡ Spark / Delta Quick Ref</h4>
+      <ul>
+        <li><strong>AQE:</strong> spark.sql.adaptive.enabled=true (Spark 3.0+)</li>
+        <li><strong>Salting:</strong> Add random suffix to skewed keys, aggregate in 2 phases</li>
+        <li><strong>Z-ORDER:</strong> OPTIMIZE ... ZORDER BY (col1, col2) — great for time-series</li>
+        <li><strong>Vacuum:</strong> RETAIN 168 HOURS (7 days) minimum; don't run too frequently</li>
+        <li><strong>Checkpoint:</strong> Always use S3 for streaming checkpoints; local = data loss</li>
+        <li><strong>Broadcast:</strong> spark.sql.autoBroadcastJoinThreshold=10MB</li>
+        <li><strong>Partition:</strong> 128MB-1GB per file ideal; too small = overhead, too big = skew</li>
+        <li><strong>Time Travel:</strong> SELECT * FROM table TIMESTAMP AS OF '2024-01-01'</li>
+      </ul>
+    </div>
+
+    <div class="ref-card">
+      <h4>🏗️ Terraform Quick Ref</h4>
+      <ul>
+        <li><strong>State:</strong> S3 backend + DynamoDB locking; never commit .tfstate</li>
+        <li><strong>Modules:</strong> Version-pinned; semantic versioning for internal modules</li>
+        <li><strong>Workspaces:</strong> Use for env isolation OR separate state files per service</li>
+        <li><strong>Plan:</strong> Always review plans in CI; require approval for prod</li>
+        <li><strong>Drift:</strong> Detect with terraform plan -detailed-exitcode; alert on drift</li>
+        <li><strong>Security:</strong> tfsec/checkov in CI; block on CRITICAL/HIGH findings</li>
+        <li><strong>Cost:</strong> Infracost in PR comments for budget awareness</li>
+        <li><strong>Lifecycle:</strong> ignore_changes for auto-generated fields (e.g., tags from AWS)</li>
+      </ul>
+    </div>
+
+    <div class="ref-card">
+      <h4>🔌 API Design Quick Ref</h4>
+      <ul>
+        <li><strong>Versioning:</strong> URL path (/v1/, /v2/); never break existing versions</li>
+        <li><strong>Idempotency:</strong> Idempotency-Key header; 24h dedup window</li>
+        <li><strong>Rate Limiting:</strong> Token bucket; return X-RateLimit-* headers</li>
+        <li><strong>Pagination:</strong> Cursor-based for large datasets; offset for small</li>
+        <li><strong>Errors:</strong> RFC 7807 Problem Details format; consistent error codes</li>
+        <li><strong>Webhooks:</strong> HMAC signature + timestamp; exponential backoff retry</li>
+        <li><strong>Health:</strong> /health (shallow) + /health/deep (DB, cache, downstream)</li>
+        <li><strong>Docs:</strong> OpenAPI 3.0+; auto-generated from code (FastAPI, Spring)</li>
+      </ul>
+    </div>
+
+    <div class="ref-card">
+      <h4>🚀 CI/CD Quick Ref</h4>
+      <ul>
+        <li><strong>Pipeline stages:</strong> Lint → Type Check → Unit Tests → Security → Build → Integration → Deploy</li>
+        <li><strong>Testing pyramid:</strong> 70% unit, 20% integration, 10% E2E</li>
+        <li><strong>Docker:</strong> Multi-stage builds; BuildKit cache; non-root user</li>
+        <li><strong>Deployment:</strong> Blue-green for zero downtime; canary for risk reduction</li>
+        <li><strong>Rollback:</strong> One-command rollback; automated on health check failure</li>
+        <li><strong>Secrets:</strong> GitHub Secrets / AWS Secrets Manager; never in repo</li>
+        <li><strong>Approval:</strong> Required for prod; minimum 2 reviewers for infra changes</li>
+      </ul>
+    </div>
+
+    <div class="ref-card">
+      <h4>🤖 AI/LLM Quick Ref</h4>
+      <ul>
+        <li><strong>RAG:</strong> Retrieve → Augment → Generate; always ground in real data</li>
+        <li><strong>Prompt engineering:</strong> Few-shot examples; explicit constraints; "If unsure, say so"</li>
+        <li><strong>Hallucination:</strong> Validation layer; fact-check against retrieved docs</li>
+        <li><strong>Cost:</strong> Track tokens per request; cache common queries; use smaller models where possible</li>
+        <li><strong>Latency:</strong> Streaming for perceived speed; async for non-urgent tasks</li>
+        <li><strong>Fallback:</strong> GPT-4 → GPT-3.5 → rule-based; never single point of failure</li>
+        <li><strong>Observability:</strong> LangSmith / Helicone for prompt tracing and debugging</li>
+      </ul>
+    </div>
+
+    <div class="ref-card">
+      <h4>📊 Performance Tuning Quick Ref</h4>
+      <ul>
+        <li><strong>Database:</strong> Index on query columns; EXPLAIN ANALYZE; connection pooling</li>
+        <li><strong>Cache:</strong> Redis for hot data; CDN for static assets; browser cache headers</li>
+        <li><strong>Async:</strong> Don't block threads; use async I/O; batch operations</li>
+        <li><strong>Compression:</strong> Gzip/Brotli for API responses; Snappy for data transfer</li>
+        <li><strong>Connection reuse:</strong> HTTP keep-alive; connection pooling for DBs</li>
+        <li><strong>Profiling:</strong> cProfile (Python), async_profiler (JVM), pprof (Go)</li>
+        <li><strong>Load testing:</strong> k6, Artillery, Locust — test at 2x expected peak</li>
+      </ul>
+    </div>
+
+    <div class="ref-card">
+      <h4>🛡️ Security Quick Ref</h4>
+      <ul>
+        <li><strong>Auth:</strong> OAuth2 + JWT; short-lived access tokens; refresh tokens</li>
+        <li><strong>Input validation:</strong> Schema validation (Pydantic, Zod); never trust client</li>
+        <li><strong>Secrets:</strong> Rotate regularly; use vaults; never log secrets</li>
+        <li><strong>Dependencies:</strong> Automated scanning (Snyk, Dependabot); pin versions</li>
+        <li><strong>Network:</strong> VPC, private subnets, security groups, WAF rules</li>
+        <li><strong>Encryption:</strong> At rest (KMS) + in transit (TLS 1.3)</li>
+        <li><strong>Audit:</strong> CloudTrail, access logs, immutable log storage</li>
+      </ul>
+    </div>
+
+    <div class="ref-card">
+      <h4>📈 Observability Quick Ref</h4>
+      <ul>
+        <li><strong>Metrics:</strong> RED (Rate, Errors, Duration) + USE (Utilization, Saturation, Errors)</li>
+        <li><strong>Logs:</strong> Structured JSON; correlation_id; centralized aggregation</li>
+        <li><strong>Traces:</strong> OpenTelemetry; sample 10% in prod, 100% for errors</li>
+        <li><strong>Alarms:</strong> Multi-condition; avoid alert fatigue; actionable messages</li>
+        <li><strong>SLOs:</strong> Define availability, latency, error budget; review quarterly</li>
+        <li><strong>Runbooks:</strong> Every alert has a runbook; automate common fixes</li>
+        <li><strong>Dashboards:</strong> Service → System → Business levels; ownership per team</li>
+      </ul>
+    </div>
+
+    <div class="ref-card">
+      <h4>💡 Interview Tips</h4>
+      <ul>
+        <li><strong>STAR format:</strong> Situation → Task → Action → Result; always quantify</li>
+        <li><strong>Think aloud:</strong> For system design, explain your reasoning, trade-offs</li>
+        <li><strong>Ask clarifying questions:</strong> "What's the scale? What's the SLA? What's the budget?"</li>
+        <li><strong>Be honest:</strong> "I don't know, but here's how I'd find out" > guessing</li>
+        <li><strong>Show curiosity:</strong> Ask about their challenges, not just benefits</li>
+        <li><strong>Connect to wetter.com:</strong> Mention weather data, scale, real-time challenges</li>
+        <li><strong>Follow up:</strong> Send thank-you email within 24h; reference specific discussion points</li>
+      </ul>
+    </div>
+
+  </div>
+</div> <!-- end ref panel -->
+
+</div> <!-- end content -->
+
+<script>
+// Tab switching
+function switchTab(tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('.tab[onclick="switchTab('' + tabId + '')"]').classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// STAR card toggle
+function toggleStar(header) {
+  const body = header.nextElementSibling;
+  const icon = header.querySelector('.toggle-icon');
+  body.classList.toggle('open');
+  icon.classList.toggle('rotated');
+}
+
+// Q&A toggle
+function toggleQA(header) {
+  const body = header.nextElementSibling;
+  const icon = header.querySelector('.toggle-icon');
+  body.classList.toggle('open');
+  icon.classList.toggle('rotated');
+}
+
+// STAR search filter
+function filterStars() {
+  const query = document.getElementById('starSearch').value.toLowerCase();
+  document.querySelectorAll('.star-card').forEach(card => {
+    const text = card.innerText.toLowerCase();
+    const tags = card.getAttribute('data-tags') || '';
+    card.style.display = (text.includes(query) || tags.includes(query)) ? 'block' : 'none';
+  });
+}
+
+// Code search filter
+function filterCode() {
+  const query = document.getElementById('codeSearch').value.toLowerCase();
+  document.querySelectorAll('.code-card').forEach(card => {
+    const text = card.innerText.toLowerCase();
+    const tags = card.getAttribute('data-tags') || '';
+    card.style.display = (text.includes(query) || tags.includes(query)) ? 'block' : 'none';
+  });
+}
+
+// Q&A search filter
+function filterQA() {
+  const query = document.getElementById('qaSearch').value.toLowerCase();
+  document.querySelectorAll('.qa-item').forEach(item => {
+    const text = item.innerText.toLowerCase();
+    item.style.display = text.includes(query) ? 'block' : 'none';
+  });
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === '1') { e.preventDefault(); switchTab('fit'); }
+    if (e.key === '2') { e.preventDefault(); switchTab('star'); }
+    if (e.key === '3') { e.preventDefault(); switchTab('code'); }
+    if (e.key === '4') { e.preventDefault(); switchTab('qa'); }
+    if (e.key === '5') { e.preventDefault(); switchTab('ref'); }
+  }
+});
+</script>
+
+</body>
+</html>
