@@ -97,6 +97,7 @@ def resume_css(c):
     .skills-block {{ font-size: 9.3pt; margin-bottom: 5pt; line-height: 1.5; }}
     .skills-block .cat-name {{ font-weight: 700; color: var(--accent); }}
     .entry-intro {{ font-size: 9.5pt; margin-bottom: 6pt; color: var(--sub); }}
+    .ref-note {{ background: var(--tint); color: var(--accent-2); font-weight: 700; padding: 2pt 5pt; border-radius: 3pt; }}
     .role-block {{ margin-bottom: 4pt; }}
     .role-header {{ display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1pt; }}
     .role-header .title {{ font-weight: 700; font-size: 10.5pt; color: var(--accent); }}
