@@ -30,10 +30,37 @@ MASTER = ROOT / "data" / "master_cv.yml"
 
 DEFAULT_COLORS = {"accent": "#26282b", "accent2": "#3aa6a6", "tint": "#eef2f2", "sub": "#444"}
 
+# DeepL and similar browser-translation extensions wrap translated text nodes
+# in markup like <font style="vertical-align: inherit;"> or
+# <span class="notranslate">, and some inject stray data-* attributes. If
+# that markup ever gets copy-pasted into a tailoring YAML field, it silently
+# corrupts the generated HTML's text nodes/structure and breaks ATS parsing.
+# Strip it unconditionally at load time so it can never reach the output.
+_FONT_TAG_RE = re.compile(r"</?font\b[^>]*>", re.IGNORECASE)
+_NOTRANSLATE_RE = re.compile(r'<span[^>]*\bclass="notranslate"[^>]*>(.*?)</span>', re.IGNORECASE | re.DOTALL)
+_EXT_ATTR_RE = re.compile(r'\s+(?:translate="no"|data-darkreader-[\w-]+="[^"]*"|data-di-id="[^"]*")', re.IGNORECASE)
+
+
+def strip_extension_markup(s):
+    s = _FONT_TAG_RE.sub("", s)
+    s = _NOTRANSLATE_RE.sub(r"\1", s)
+    s = _EXT_ATTR_RE.sub("", s)
+    return s
+
+
+def _sanitize(obj):
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(v) for v in obj]
+    if isinstance(obj, str):
+        return strip_extension_markup(obj)
+    return obj
+
 
 def load_yaml(path):
     with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return _sanitize(yaml.safe_load(f))
 
 
 def esc(s):
@@ -88,26 +115,26 @@ def resume_css(c):
       color: var(--accent); border-bottom: 1.5pt solid var(--accent-2);
       padding-bottom: 3pt; margin-top: 11pt; margin-bottom: 6pt;
     }}
+    h3 {{ font-size: 10.5pt; font-weight: 700; color: var(--accent); margin-top: 6pt; margin-bottom: 1pt; }}
+    h4 {{ font-size: 9.3pt; font-weight: 700; color: var(--accent-2); margin-top: 6pt; margin-bottom: 2pt; }}
     p {{ font-size: 9.7pt; margin-bottom: 6pt; line-height: 1.5; }}
-    .highlight-list {{ list-style: none; padding: 0; margin-bottom: 4pt; }}
-    .highlight-list li {{ font-size: 9.5pt; margin-bottom: 3pt; padding-left: 10pt; position: relative; }}
-    .highlight-list li::before {{ content: ""; position: absolute; left: 0; top: 6pt; width: 5pt; height: 5pt; background: var(--accent-2); border-radius: 50%; }}
-    .expertise-list {{ list-style: none; padding: 0; margin-bottom: 4pt; display: flex; flex-wrap: wrap; }}
-    .expertise-list li {{ font-size: 9.5pt; font-weight: 600; color: var(--accent); flex: 0 0 33.33%; padding: 2.5pt 8pt 2.5pt 0; }}
+    /* Every list below is a plain, single-column <ul>/<li> using native
+       list-style bullets (no ::before pseudo-content, no absolute
+       positioning, no flex/grid columns) so ATS text parsers read bullets
+       and line order exactly as they appear visually. */
+    ul {{ list-style: disc; margin: 0 0 6pt 15pt; padding: 0; }}
+    li {{ font-size: 9.5pt; margin-bottom: 3pt; line-height: 1.4; }}
+    .highlight-list li {{ font-size: 9.5pt; }}
+    .expertise-list li {{ font-weight: 600; color: var(--accent); }}
     .skills-block {{ font-size: 9.3pt; margin-bottom: 5pt; line-height: 1.5; }}
     .skills-block .cat-name {{ font-weight: 700; color: var(--accent); }}
     .entry-intro {{ font-size: 9.5pt; margin-bottom: 6pt; color: var(--sub); }}
     .ref-note {{ background: var(--tint); color: var(--accent-2); font-weight: 700; padding: 2pt 5pt; border-radius: 3pt; }}
-    .role-block {{ margin-bottom: 4pt; }}
-    .role-header {{ display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1pt; }}
-    .role-header .title {{ font-weight: 700; font-size: 10.5pt; color: var(--accent); }}
-    .role-header .dates {{ font-size: 9.3pt; color: var(--sub); white-space: nowrap; }}
-    .role-header .company {{ font-size: 9.3pt; color: var(--sub); font-style: italic; }}
-    .project {{ margin-top: 7pt; margin-bottom: 2pt; }}
-    .project-title {{ font-size: 9.3pt; font-weight: 700; color: var(--accent-2); border-left: 2.5pt solid var(--accent-2); padding-left: 6pt; margin-bottom: 2pt; }}
-    .project ul {{ list-style: none; padding: 0; margin: 0 0 4pt 8pt; }}
-    .project li {{ font-size: 9.3pt; margin-bottom: 1.5pt; padding-left: 9pt; position: relative; line-height: 1.4; }}
-    .project li::before {{ content: ""; position: absolute; left: 0; top: 5.5pt; width: 4pt; height: 4pt; background: var(--accent); border-radius: 50%; }}
+    .role-title {{ font-weight: 700; font-size: 10.5pt; color: var(--accent); margin-bottom: 1pt; }}
+    .role-meta {{ font-size: 9.3pt; color: var(--sub); margin-bottom: 4pt; }}
+    .project-title {{ font-size: 9.3pt; font-weight: 700; color: var(--accent-2); margin-top: 7pt; margin-bottom: 2pt; }}
+    .project ul {{ margin-bottom: 4pt; }}
+    .project li {{ font-size: 9.3pt; margin-bottom: 1.5pt; line-height: 1.4; }}
     .edu-entry, .lang-entry, .cert-row {{ font-size: 9.7pt; margin-bottom: 3pt; }}
     .edu-entry .degree, .lang-name {{ font-weight: 600; color: var(--accent); }}
 """
@@ -132,9 +159,9 @@ def cover_letter_css(c):
     .subject {{ font-weight: 700; font-size: 11.5pt; color: var(--accent); margin-bottom: 14pt; border-bottom: 1.5pt solid var(--accent-2); padding-bottom: 6pt; }}
     p {{ margin-bottom: 10pt; font-size: 11pt; }}
     strong {{ font-weight: 700; color: var(--accent-2); }}
-    ul.points {{ list-style: none; padding: 0; margin: 0 0 12pt 0; }}
-    ul.points li {{ font-size: 10.7pt; margin-bottom: 6pt; padding-left: 12pt; position: relative; line-height: 1.45; }}
-    ul.points li::before {{ content: ""; position: absolute; left: 0; top: 6pt; width: 5pt; height: 5pt; background: var(--accent-2); border-radius: 50%; }}
+    /* Plain single-column list, native bullet, no CSS-positioned pseudo-content. */
+    ul.points {{ list-style: disc; margin: 0 0 12pt 15pt; padding: 0; }}
+    ul.points li {{ font-size: 10.7pt; margin-bottom: 6pt; line-height: 1.45; }}
     .signature-block {{ margin-top: 24pt; font-size: 10.5pt; color: var(--sub); border-top: 1pt solid var(--tint); padding-top: 10pt; }}
 """
 
@@ -169,7 +196,7 @@ def render_resume(master, tailoring):
         )
         projects_html += f"""
     <div class="project">
-      <div class="project-title">{esc(proj["label"])}</div>
+      <h4 class="project-title">{esc(proj["label"])}</h4>
       <ul>
 {bullets}
       </ul>
@@ -228,11 +255,8 @@ def render_resume(master, tailoring):
   <h2>Professional Experience</h2>
 
   <div class="role-block">
-    <div class="role-header">
-      <span class="title">{esc(master["current_role"]["title"])}</span>
-      <span class="dates">{esc(master["current_role"]["dates"])}</span>
-    </div>
-    <div class="role-header"><span class="company">{esc(master["current_role"]["company"])} - {esc(master["current_role"]["location"])}</span></div>
+    <h3 class="role-title">{esc(master["current_role"]["title"])}</h3>
+    <p class="role-meta">{esc(master["current_role"]["company"])} - {esc(master["current_role"]["location"])} &nbsp;|&nbsp; {esc(master["current_role"]["dates"])}</p>
     <p class="entry-intro">{esc(entry_intro)}</p>
 {projects_html}
   </div>
