@@ -8,10 +8,13 @@ file (profile summary, keyword picks, project order, cover letter prose) —
 this script does all the boilerplate HTML/CSS assembly locally, at zero
 LLM token cost.
 
-Template: matches the 2026-07-30 hand-authored house style (tinted header
-box, role-tag line, accent-colored bold keywords, bordered project titles,
-no separate long Skills-category dump) — see data/resumes/cv_*.html for the
-original hand-written examples this was reverse-engineered from.
+Template: house style (role-tag line, colored accent headings/borders only —
+no background tint boxes or colored sidebars, per references/ats-rules.md's
+"no text boxes/shapes" rule; bold keywords render in plain black, not accent
+color, to avoid a keyword-stuffed/AI-templated look to human or AI reviewers;
+bordered project titles, no separate long Skills-category dump). Revised
+2026-08-29 after auditing prior output against references/ats-rules.md and
+removing the tinted-box header + colored-strong styling that violated it.
 
 Usage:
     python scripts/generate_resume.py data/tailoring/<company>.yml
@@ -105,8 +108,8 @@ def resume_css(c):
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }}
     @media print {{ body {{ padding: 0; max-width: none; }} a {{ color: var(--accent); text-decoration: none; }} }}
-    strong {{ font-weight: 700; color: var(--accent-2); }}
-    .header {{ background: var(--tint); border-left: 3pt solid var(--accent); padding: 10pt 12pt; margin-bottom: 12pt; }}
+    strong {{ font-weight: 700; color: var(--ink); }}
+    .header {{ border-bottom: 1.5pt solid var(--accent); padding-bottom: 8pt; margin-bottom: 12pt; }}
     .header h1 {{ font-size: 16pt; font-weight: 700; margin-bottom: 3pt; color: var(--accent); }}
     .header .role-tag {{ font-size: 9.3pt; font-weight: 600; color: var(--accent-2); margin-bottom: 6pt; text-transform: uppercase; letter-spacing: 0.3pt; }}
     .header .contact {{ font-size: 9.3pt; color: var(--sub); line-height: 1.6; }}
@@ -125,11 +128,11 @@ def resume_css(c):
     ul {{ list-style: disc; margin: 0 0 6pt 15pt; padding: 0; }}
     li {{ font-size: 9.5pt; margin-bottom: 3pt; line-height: 1.4; }}
     .highlight-list li {{ font-size: 9.5pt; }}
-    .expertise-list li {{ font-weight: 600; color: var(--accent); }}
+    .expertise-list li {{ font-weight: 600; color: var(--ink); }}
     .skills-block {{ font-size: 9.3pt; margin-bottom: 5pt; line-height: 1.5; }}
     .skills-block .cat-name {{ font-weight: 700; color: var(--accent); }}
     .entry-intro {{ font-size: 9.5pt; margin-bottom: 6pt; color: var(--sub); }}
-    .ref-note {{ background: var(--tint); color: var(--accent-2); font-weight: 700; padding: 2pt 5pt; border-radius: 3pt; }}
+    .ref-note {{ color: var(--accent-2); font-weight: 700; }}
     .role-title {{ font-weight: 700; font-size: 10.5pt; color: var(--accent); margin-bottom: 1pt; }}
     .role-meta {{ font-size: 9.3pt; color: var(--sub); margin-bottom: 4pt; }}
     .project-title {{ font-size: 9.3pt; font-weight: 700; color: var(--accent-2); margin-top: 7pt; margin-bottom: 2pt; }}
@@ -152,17 +155,17 @@ def cover_letter_css(c):
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }}
     @media print {{ body {{ padding: 0; max-width: none; }} a {{ color: var(--accent); text-decoration: none; }} }}
-    .sender {{ background: var(--tint); border-left: 3pt solid var(--accent); padding: 8pt 10pt; font-size: 10.5pt; color: var(--sub); margin-bottom: 18pt; }}
+    .sender {{ border-bottom: 1.5pt solid var(--accent); padding-bottom: 8pt; font-size: 10.5pt; color: var(--sub); margin-bottom: 18pt; }}
     .sender strong {{ font-size: 14pt; font-weight: 700; color: var(--accent); display: block; margin-bottom: 4pt; }}
     .date-line {{ margin-bottom: 18pt; font-size: 10.5pt; color: var(--sub); }}
     .recipient {{ font-size: 10.5pt; color: var(--sub); margin-bottom: 18pt; line-height: 1.5; }}
     .subject {{ font-weight: 700; font-size: 11.5pt; color: var(--accent); margin-bottom: 14pt; border-bottom: 1.5pt solid var(--accent-2); padding-bottom: 6pt; }}
     p {{ margin-bottom: 10pt; font-size: 11pt; }}
-    strong {{ font-weight: 700; color: var(--accent-2); }}
+    strong {{ font-weight: 700; color: var(--ink); }}
     /* Plain single-column list, native bullet, no CSS-positioned pseudo-content. */
     ul.points {{ list-style: disc; margin: 0 0 12pt 15pt; padding: 0; }}
     ul.points li {{ font-size: 10.7pt; margin-bottom: 6pt; line-height: 1.45; }}
-    .signature-block {{ margin-top: 24pt; font-size: 10.5pt; color: var(--sub); border-top: 1pt solid var(--tint); padding-top: 10pt; }}
+    .signature-block {{ margin-top: 24pt; font-size: 10.5pt; color: var(--sub); border-top: 1pt solid var(--sub); padding-top: 10pt; }}
 """
 
 

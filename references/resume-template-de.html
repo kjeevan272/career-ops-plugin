@@ -50,16 +50,17 @@
       margin-bottom: 6pt;
     }
 
-    .personal-grid {
-      display: grid;
-      grid-template-columns: 140pt 1fr;
-      gap: 3pt 8pt;
-      font-size: 10pt;
-      color: #333;
-    }
-
+    /* Plain stacked lines, NOT CSS grid/table columns: many ATS PDF-to-text
+       parsers reconstruct reading order by X/Y position rather than DOM
+       order, and a multi-row grid gets read column-major (all labels, then
+       all values) instead of row-major - scrambling name/phone/email, the
+       highest-stakes text in the document. One line per fact keeps DOM
+       order and visual order identical. */
+    .personal-grid { font-size: 10pt; color: #333; }
+    .personal-grid div { margin-bottom: 2pt; }
     .personal-grid .label {
       font-weight: 600;
+      display: inline;
     }
 
     /* Section headers */
@@ -178,12 +179,12 @@
   <div class="header">
     <h1>{{NAME}}</h1>
     <div class="personal-grid">
-      <span class="label">Adresse / Address</span>    <span>{{LOCATION}}</span>
-      <span class="label">Telefon</span>               <span>{{PHONE}}</span>
-      <span class="label">E-Mail</span>                <span>{{EMAIL}}</span>
+      <div><span class="label">Adresse / Address:</span> {{LOCATION}}</div>
+      <div><span class="label">Telefon:</span> {{PHONE}}</div>
+      <div><span class="label">E-Mail:</span> {{EMAIL}}</div>
       {{LINKEDIN_ROW}}
       {{PORTFOLIO_ROW}}
-      <span class="label">Arbeitsgenehmigung</span>   <span>{{WORK_AUTH}}</span>
+      <div><span class="label">Arbeitsgenehmigung:</span> {{WORK_AUTH}}</div>
     </div>
   </div>
 
